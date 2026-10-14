@@ -38,7 +38,11 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
             letterSpacing: -.3,
           ),
         ),
-        backgroundColor: Colors.white.withOpacity(.08),
+        backgroundColor: Colors.white.withOpacity(.12),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
+          side: BorderSide(color: Colors.white30),
+        ),
         surfaceTintColor: Colors.transparent,
         actions: actions,
       ),

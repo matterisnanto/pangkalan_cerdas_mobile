@@ -1,6 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
-/// Modern clean card. GlassCard name retained for existing widgets.
+/// Shared iOS 17 ambient glass surface. Keep children intrinsically sized.
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -31,29 +32,42 @@ class GlassCard extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    final radius = borderRadius ?? BorderRadius.circular(18);
-    Widget card = Container(
-      width: width,
-      height: height,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: backgroundColor ?? Theme.of(context).colorScheme.surface,
-        borderRadius: radius,
-        border: Border.all(
-          color: borderColor ?? const Color(0xFFE2E8F0),
-          width: borderWidth,
+    final radius = borderRadius ?? BorderRadius.circular(22);
+    final surface = backgroundColor ?? Colors.white.withOpacity(.16);
+    final outline = borderColor ?? Colors.white.withOpacity(.35);
+    final shadow =
+        shadows ??
+        const [
+          BoxShadow(
+            color: Color(0x40030A2D),
+            blurRadius: 24,
+            spreadRadius: -6,
+            offset: Offset(0, 10),
+          ),
+        ];
+    Widget card = ClipRRect(
+      borderRadius: radius,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: blurSigma == 0 ? 20 : blurSigma,
+          sigmaY: blurSigma == 0 ? 20 : blurSigma,
         ),
-        boxShadow:
-            shadows ??
-            const [
-              BoxShadow(
-                color: Color(0x120F172A),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-            ],
+        child: Container(
+          width: width,
+          height: height,
+          padding: padding,
+          decoration: BoxDecoration(
+            color: surface,
+            borderRadius: radius,
+            border: Border.all(
+              color: outline,
+              width: borderWidth == 1 ? 1.2 : borderWidth,
+            ),
+            boxShadow: shadow,
+          ),
+          child: child,
+        ),
       ),
-      child: child,
     );
     if (onTap != null)
       card = InkWell(borderRadius: radius, onTap: onTap, child: card);

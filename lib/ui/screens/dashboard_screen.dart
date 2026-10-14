@@ -128,10 +128,12 @@ class DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildFilterChips() {
-    return Row(
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         const Text('Filter: ', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(width: 4),
         ...['SEMUA', 'BERHASIL', 'GAGAL'].map((f) {
           final isActive = _filterStatus == f;
           return Padding(
