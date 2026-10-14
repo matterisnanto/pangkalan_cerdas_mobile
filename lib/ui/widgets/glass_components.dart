@@ -51,16 +51,19 @@ class GlassTextField extends StatelessWidget {
   Widget build(BuildContext context) => TextField(
     controller: controller,
     onChanged: onChanged,
-    style: const TextStyle(color: Color(0xFF17202A)),
+    style: Theme.of(context).textTheme.bodyMedium,
     decoration: InputDecoration(
       hintText: hintText,
-      hintStyle: TextStyle(color: Colors.grey.shade600),
+      hintStyle: Theme.of(context).inputDecorationTheme.hintStyle,
       prefixIcon: prefixIcon == null
           ? null
-          : Icon(prefixIcon, color: Colors.white70),
+          : Icon(
+              prefixIcon,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: Colors.white.withOpacity(.11),
+      fillColor: Theme.of(context).inputDecorationTheme.fillColor,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide(color: Colors.white.withOpacity(.25)),
@@ -95,8 +98,8 @@ class GlassButton extends StatelessWidget {
     icon: Icon(icon ?? Icons.arrow_forward_rounded, size: 18),
     label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
     style: FilledButton.styleFrom(
-      backgroundColor: color.withOpacity(.85),
-      foregroundColor: const Color(0xFF07111F),
+      backgroundColor: color.withValues(alpha: .85),
+      foregroundColor: Theme.of(context).colorScheme.onPrimary,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     ),

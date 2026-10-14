@@ -34,12 +34,15 @@ class GlassCard extends StatelessWidget {
     final radius = borderRadius ?? BorderRadius.circular(16);
     Widget card = Card(
       margin: EdgeInsets.zero,
-      elevation: 1,
+      elevation: Theme.of(context).brightness == Brightness.dark ? 0 : 1,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
-        side: BorderSide(color: Colors.grey.shade200, width: borderWidth),
+        side: BorderSide(
+          color: borderColor ?? Theme.of(context).colorScheme.outlineVariant,
+          width: borderWidth,
+        ),
       ),
-      color: backgroundColor ?? Colors.white,
+      color: backgroundColor ?? Theme.of(context).cardColor,
       child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
     );
     if (onTap != null)

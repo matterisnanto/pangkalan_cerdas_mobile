@@ -4,9 +4,10 @@ abstract final class AppTheme {
   static const emerald = Color(0xFF00AA5B);
   static const darkEmerald = Color(0xFF10B981);
   static const indigo = Color(0xFF0063F7);
-  static const ink = Color(0xFF212529);
+  static const ink = Color(0xFF0F172A);
+  static const secondaryLight = Color(0xFF475569);
   static const ice = Color(0xFFF8FAFC);
-  static const lightScaffold = Color(0xFFF8F9FA);
+  static const lightScaffold = Color(0xFFF8FAFC);
   static const darkScaffold = Color(0xFF0F172A);
 
   static ThemeData light() => _build(
@@ -37,20 +38,46 @@ abstract final class AppTheme {
     Color border,
     Color field,
   ) {
+    final secondary = brightness == Brightness.light
+        ? secondaryLight
+        : const Color(0xFF94A3B8);
     final scheme = ColorScheme.fromSeed(
       seedColor: primary,
       brightness: brightness,
       primary: primary,
+      onPrimary: Colors.white,
+      secondary: indigo,
       surface: surface,
       onSurface: text,
+      onSurfaceVariant: secondary,
       error: const Color(0xFFD64545),
+      onError: Colors.white,
     );
+    final textTheme = ThemeData(brightness: brightness, useMaterial3: true)
+        .textTheme
+        .apply(bodyColor: text, displayColor: text)
+        .copyWith(
+          bodyMedium: TextStyle(
+            color: text,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          bodySmall: TextStyle(color: secondary, fontSize: 12),
+          labelLarge: TextStyle(color: text, fontWeight: FontWeight.w700),
+        );
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: scaffold,
       fontFamily: 'Roboto',
+      textTheme: textTheme,
+      dividerColor: border,
+      chipTheme: ChipThemeData(
+        labelStyle: TextStyle(color: text, fontWeight: FontWeight.w600),
+        secondaryLabelStyle: TextStyle(color: text),
+        side: BorderSide(color: border),
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: scaffold,
         foregroundColor: text,
