@@ -14,31 +14,35 @@ class ApiClient {
   late final Dio _dio;
 
   ApiClient(this._storage, {this.onTokenExpired}) {
-    _dio = Dio(BaseOptions(
-      baseUrl: _baseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 15),
-    ));
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await _storage.getToken();
-        if (token != null && token.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        options.headers['Origin'] = _origin;
-        options.headers['Referer'] = _referer;
-        options.headers['Accept'] = 'application/json, text/plain, */*';
-        options.headers['User-Agent'] = _userAgent;
-        handler.next(options);
-      },
-      onError: (error, handler) async {
-        if (_isExpiredResponse(error)) {
-          await _storage.deleteToken();
-          onTokenExpired?.call();
-        }
-        handler.next(error);
-      },
-    ));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: _baseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+      ),
+    );
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await _storage.getToken();
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          options.headers['Origin'] = _origin;
+          options.headers['Referer'] = _referer;
+          options.headers['Accept'] = 'application/json, text/plain, */*';
+          options.headers['User-Agent'] = _userAgent;
+          handler.next(options);
+        },
+        onError: (error, handler) async {
+          if (_isExpiredResponse(error)) {
+            await _storage.deleteToken();
+            onTokenExpired?.call();
+          }
+          handler.next(error);
+        },
+      ),
+    );
   }
 
   Dio get dio => _dio;

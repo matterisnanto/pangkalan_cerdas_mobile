@@ -26,13 +26,13 @@ class Pangkalan {
       lastTokenUpdate: json['lastTokenUpdate'] is Timestamp
           ? (json['lastTokenUpdate'] as Timestamp).toDate()
           : json['lastTokenUpdate'] is String
-              ? DateTime.tryParse(json['lastTokenUpdate'] as String)
-              : null,
+          ? DateTime.tryParse(json['lastTokenUpdate'] as String)
+          : null,
       lastSyncAt: json['lastSyncAt'] is Timestamp
           ? (json['lastSyncAt'] as Timestamp).toDate()
           : json['lastSyncAt'] is String
-              ? DateTime.tryParse(json['lastSyncAt'] as String)
-              : null,
+          ? DateTime.tryParse(json['lastSyncAt'] as String)
+          : null,
     );
   }
 
@@ -42,10 +42,10 @@ class Pangkalan {
       'storeName': storeName,
       'stockAvailable': stockAvailable,
       'sold': sold,
-      'lastTokenUpdate':
-          lastTokenUpdate != null ? Timestamp.fromDate(lastTokenUpdate!) : null,
-      'lastSyncAt':
-          lastSyncAt != null ? Timestamp.fromDate(lastSyncAt!) : null,
+      'lastTokenUpdate': lastTokenUpdate != null
+          ? Timestamp.fromDate(lastTokenUpdate!)
+          : null,
+      'lastSyncAt': lastSyncAt != null ? Timestamp.fromDate(lastSyncAt!) : null,
     };
   }
 }

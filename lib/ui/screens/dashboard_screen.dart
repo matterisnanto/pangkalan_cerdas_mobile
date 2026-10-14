@@ -17,6 +17,7 @@ import '../widgets/queue_progress_widget.dart';
 import '../widgets/action_buttons_widget.dart';
 import '../widgets/pelanggan_picker_dialog.dart';
 import 'webview_screen.dart';
+import '../widgets/glass_components.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onOpenWebView;
@@ -65,10 +66,8 @@ class DashboardScreenState extends State<DashboardScreen> {
     return Consumer2<AuthProvider, TransactionQueueProvider>(
       builder: (context, auth, txQueue, _) {
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Pangkalan Cerdas v6.0'),
-            backgroundColor: Colors.blue.shade800,
-            foregroundColor: Colors.white,
+          appBar: GlassAppBar(
+            title: auth.storeName.isEmpty ? 'Pangkalan Cerdas' : auth.storeName,
             actions: [
               IconButton(
                 icon: const Icon(Icons.language),

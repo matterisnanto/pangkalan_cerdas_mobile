@@ -65,8 +65,13 @@ class ExcelService {
         String? alamat;
 
         // Check if col2 looks like a date (e.g. 1990-01-01 or 01/01/1990)
-        final isCol2Date = col2.contains('-') || col2.contains('/') || RegExp(r'^\d{4}').hasMatch(col2);
-        final isCol2Kategori = col2.toUpperCase().contains('RUMAH') || col2.toUpperCase().contains('UMKM');
+        final isCol2Date =
+            col2.contains('-') ||
+            col2.contains('/') ||
+            RegExp(r'^\d{4}').hasMatch(col2);
+        final isCol2Kategori =
+            col2.toUpperCase().contains('RUMAH') ||
+            col2.toUpperCase().contains('UMKM');
 
         if (isCol2Date) {
           tanggalLahir = _normalizeDateString(col2);
@@ -82,15 +87,17 @@ class ExcelService {
           alamat = col4.isNotEmpty ? col4 : null;
         }
 
-        result.add(Pelanggan(
-          nik: nik,
-          nama: nama,
-          tanggalLahir: tanggalLahir,
-          kategori: Pelanggan.normalizeKategori(kategori),
-          alamat: alamat,
-          registrationId: registrationId,
-          createdAt: DateTime.now(),
-        ));
+        result.add(
+          Pelanggan(
+            nik: nik,
+            nama: nama,
+            tanggalLahir: tanggalLahir,
+            kategori: Pelanggan.normalizeKategori(kategori),
+            alamat: alamat,
+            registrationId: registrationId,
+            createdAt: DateTime.now(),
+          ),
+        );
       }
       break; // Only read first sheet
     }
@@ -133,7 +140,9 @@ class ExcelService {
         TextCellValue(p.tanggalLahir ?? '-'),
         TextCellValue(p.kategori),
         TextCellValue(p.alamat ?? '-'),
-        TextCellValue(p.createdAt != null ? dateFormat.format(p.createdAt!) : '-'),
+        TextCellValue(
+          p.createdAt != null ? dateFormat.format(p.createdAt!) : '-',
+        ),
       ]);
     }
 

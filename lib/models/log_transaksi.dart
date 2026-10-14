@@ -43,9 +43,8 @@ class LogTransaksi {
       timestamp: json['timestamp'] is Timestamp
           ? (json['timestamp'] as Timestamp).toDate()
           : json['timestamp'] is String
-              ? DateTime.tryParse(json['timestamp'] as String) ??
-                  DateTime.now()
-              : DateTime.now(),
+          ? DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 

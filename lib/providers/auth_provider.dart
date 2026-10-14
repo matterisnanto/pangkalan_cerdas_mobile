@@ -4,6 +4,7 @@ import '../models/pangkalan.dart';
 import '../services/api_client.dart';
 import '../services/secure_storage_service.dart';
 import '../services/firebase_service.dart';
+import '../services/mypertamina_api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final SecureStorageService _storage = SecureStorageService();
@@ -35,6 +36,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
     onTokenExpired?.call();
   }
+
   String get registrationId => _pangkalan?.registrationId ?? '';
   String get storeName => _pangkalan?.storeName ?? '';
   int get stockAvailable => _pangkalan?.stockAvailable ?? 0;
@@ -65,29 +67,18 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiClient.fetchUserProducts();
-      final data = response.data;
+      final data = await MyPertaminaApiService(_apiClient).fetchProfile();
 
-      if (data == null) {
+      if (data.registrationId.isEmpty) {
         _errorMessage = 'Respon API kosong';
         return;
       }
 
-      // Handle response structure: { data: { registrationId, ... } }
-      final Map<String, dynamic> productData =
-          data is Map<String, dynamic>
-              ? (data['data'] is Map<String, dynamic>
-                  ? data['data'] as Map<String, dynamic>
-                  : data)
-              : {};
-
-      final regId = productData['registrationId']?.toString() ?? '';
-      final name = productData['storeName']?.toString() ??
-          productData['productName']?.toString() ??
-          '';
-      final stock =
-          (productData['stockAvailable'] as num?)?.toInt() ?? 0;
-      final soldCount = (productData['sold'] as num?)?.toInt() ?? 0;
+      final regId = data.registrationId;
+      final name = data.storeName;
+      // Profile endpoint is the authority for active scope; stock syncs separately.
+      const stock = 0;
+      const soldCount = 0;
 
       if (regId.isEmpty) {
         _errorMessage = 'registrationId tidak ditemukan dalam respon API';

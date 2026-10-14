@@ -68,10 +68,15 @@ class PelangganService {
   /// Add new customer to centralized 'pelanggan' collection
   Future<String> addPelanggan(Pelanggan pelanggan) async {
     // If document with same NIK exists, update it, else add
-    final existing = await _collection.where('nik', isEqualTo: pelanggan.nik).limit(1).get();
+    final existing = await _collection
+        .where('nik', isEqualTo: pelanggan.nik)
+        .limit(1)
+        .get();
     if (existing.docs.isNotEmpty) {
       final docId = existing.docs.first.id;
-      await _collection.doc(docId).set(pelanggan.toJson(), SetOptions(merge: true));
+      await _collection
+          .doc(docId)
+          .set(pelanggan.toJson(), SetOptions(merge: true));
       return docId;
     }
     final docRef = await _collection.add(pelanggan.toJson());
@@ -86,7 +91,10 @@ class PelangganService {
           .set(pelanggan.toJson(), SetOptions(merge: true));
     } else {
       // Find by NIK
-      final snap = await _collection.where('nik', isEqualTo: pelanggan.nik).limit(1).get();
+      final snap = await _collection
+          .where('nik', isEqualTo: pelanggan.nik)
+          .limit(1)
+          .get();
       if (snap.docs.isNotEmpty) {
         await _collection
             .doc(snap.docs.first.id)

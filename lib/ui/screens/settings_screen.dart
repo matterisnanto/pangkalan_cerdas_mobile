@@ -18,8 +18,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   int _delay = 3;
   bool _busy = false;
-  final _profiles = List.generate(3, (_) => {'id': '', 'name': ''});
-
   @override
   void initState() {
     super.initState();
@@ -27,21 +25,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final storage = SecureStorageService();
-    _delay = await storage.getTransactionDelay();
-    for (var i = 0; i < 3; i++) {
-      _profiles[i] = await storage.getPangkalanProfile(i + 1);
-    }
+    _delay = await SecureStorageService().getTransactionDelay();
     if (mounted) setState(() {});
-  }
-
-  Future<void> _saveProfile(int index) async {
-    final profile = _profiles[index];
-    await SecureStorageService().savePangkalanProfile(
-      index + 1,
-      id: profile['id']!,
-      name: profile['name']!,
-    );
   }
 
   Future<void> _clearSession() async {
@@ -94,44 +79,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            ...List.generate(
-              3,
-              (index) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: GlassCard(
-                  child: Column(
-                    children: [
-                      ListTile(
-                        title: Text('Pangkalan ${index + 1}'),
-                        leading: const Icon(Icons.store_outlined),
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: 'ID Registrasi',
-                        ),
-                        controller: TextEditingController(
-                          text: _profiles[index]['id'],
-                        ),
-                        onChanged: (value) => _profiles[index]['id'] = value,
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: 'Nama Pangkalan',
-                        ),
-                        controller: TextEditingController(
-                          text: _profiles[index]['name'],
-                        ),
-                        onChanged: (value) => _profiles[index]['name'] = value,
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => _saveProfile(index),
-                          child: const Text('Simpan Profil'),
-                        ),
-                      ),
-                    ],
-                  ),
+            GlassCard(
+              child: ListTile(
+                title: const Text('Auto-scoping aktif'),
+                subtitle: const Text(
+                  'Nama dan registrationId disinkronkan otomatis dari GET /general/v1/users/profile.',
+                ),
+                leading: const Icon(Icons.hub_outlined),
+                trailing: IconButton(
+                  onPressed: auth.fetchUserProfile,
+                  icon: const Icon(Icons.sync),
+                  tooltip: 'Sinkronkan profil',
                 ),
               ),
             ),

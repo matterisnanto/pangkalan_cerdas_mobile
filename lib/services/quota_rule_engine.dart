@@ -33,8 +33,7 @@ class QuotaRuleEngine {
 
     final int totalPrediksi = tabungHariIni + jumlahTabungAkanDibeli;
 
-    final int maxKuota =
-        kategori == 'UMKM' ? maxUmkm : maxRumahTangga;
+    final int maxKuota = kategori == 'UMKM' ? maxUmkm : maxRumahTangga;
 
     if (totalPrediksi > maxKuota) {
       final label = kategori == 'UMKM' ? 'UMKM' : 'Rumah Tangga';

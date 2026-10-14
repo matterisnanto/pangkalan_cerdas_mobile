@@ -98,7 +98,9 @@ class Pelanggan {
       'sisaKuotaBulanan': sisaKuotaBulanan,
       'sisaKuotaKeluarga': sisaKuotaKeluarga,
       'encryptedFamilyId': encryptedFamilyId,
-      'lastSyncedAt': lastSyncedAt != null ? Timestamp.fromDate(lastSyncedAt!) : null,
+      'lastSyncedAt': lastSyncedAt != null
+          ? Timestamp.fromDate(lastSyncedAt!)
+          : null,
     };
   }
 
@@ -132,4 +134,3 @@ class Pelanggan {
     );
   }
 }
-
