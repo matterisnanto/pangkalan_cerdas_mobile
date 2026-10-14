@@ -9,7 +9,6 @@ import '../../services/batch_verification_service.dart';
 import '../../services/mypertamina_api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/apple_background.dart';
 import '../widgets/pelanggan_card.dart';
 import '../widgets/pelanggan_form_dialog.dart';
 import '../widgets/pelanggan_detail_modal.dart';
@@ -199,33 +198,19 @@ class _PelangganScreenState extends State<PelangganScreen> {
   }
 
   Widget _filterChip(String label) {
-    final isSelected = _selectedKategori == label;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedKategori = label),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF06B6D4).withOpacity(0.3)
-              : Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFF06B6D4)
-                : Colors.white.withOpacity(0.2),
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.white70,
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
+    final selected = _selectedKategori == label;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => setState(() => _selectedKategori = label),
+      selectedColor: const Color(0xFF00AA5B),
+      backgroundColor: Colors.white,
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : Colors.black87,
+        fontWeight: FontWeight.w600,
+        fontSize: 12,
       ),
+      shape: const StadiumBorder(side: BorderSide(color: Color(0xFFE0E0E0))),
     );
   }
 
@@ -339,37 +324,23 @@ class _PelangganScreenState extends State<PelangganScreen> {
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: GlassCard(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        borderRadius: BorderRadius.circular(16),
-        backgroundColor: Colors.white.withOpacity(0.12),
-        borderColor: Colors.white.withOpacity(0.25),
-        child: Row(
-          children: [
-            const Icon(Icons.search, color: Colors.white70, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _searchCtrl,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: 'Cari NIK atau Nama...',
-                  hintStyle: TextStyle(
-                    color: Colors.white.withOpacity(0.4),
-                    fontSize: 13,
-                  ),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+      child: TextField(
+        controller: _searchCtrl,
+        decoration: InputDecoration(
+          hintText: 'Cari NIK atau Nama...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchQuery.isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: _searchCtrl.clear,
                 ),
-              ),
-            ),
-            if (_searchQuery.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.clear, color: Colors.white60, size: 18),
-                onPressed: () => _searchCtrl.clear(),
-              ),
-          ],
+          filled: true,
+          fillColor: const Color(0xFFF1F3F5),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide.none,
+          ),
         ),
       ),
     );
@@ -378,113 +349,107 @@ class _PelangganScreenState extends State<PelangganScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AppleBackground(
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildTopBar(),
-              _buildSearchBar(),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6,
-                ),
-                child: Row(
-                  children: [
-                    _filterChip('Semua'),
-                    const SizedBox(width: 8),
-                    _filterChip('Rumah Tangga'),
-                    const SizedBox(width: 8),
-                    _filterChip('UMKM'),
-                  ],
-                ),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildTopBar(),
+            _buildSearchBar(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
+                children: [
+                  _filterChip('Semua'),
+                  const SizedBox(width: 8),
+                  _filterChip('Rumah Tangga'),
+                  const SizedBox(width: 8),
+                  _filterChip('UMKM'),
+                ],
               ),
-              Expanded(
-                child: StreamBuilder<List<Pelanggan>>(
-                  stream: _service.streamPelanggan(
-                    search: _searchQuery,
-                    kategori: _selectedKategori,
-                  ),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF06B6D4),
-                        ),
-                      );
-                    }
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: GlassCard(
-                          margin: const EdgeInsets.all(24),
-                          child: Text(
-                            'Terjadi kesalahan: ${snapshot.error}',
-                            style: const TextStyle(color: Colors.redAccent),
-                          ),
-                        ),
-                      );
-                    }
-                    final list = snapshot.data ?? [];
-                    if (list.isEmpty) {
-                      return Center(
-                        child: GlassCard(
-                          margin: const EdgeInsets.all(24),
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.people_outline,
-                                size: 48,
-                                color: Colors.white.withOpacity(0.4),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                _searchQuery.isNotEmpty
-                                    ? 'Tidak ada pelanggan ditemukan'
-                                    : 'Belum ada data pelanggan',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Impor dari Excel (.xlsx) atau tambahkan secara manual.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.5),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                    return ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+            ),
+            Expanded(
+              child: StreamBuilder<List<Pelanggan>>(
+                stream: _service.streamPelanggan(
+                  search: _searchQuery,
+                  kategori: _selectedKategori,
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF06B6D4),
                       ),
-                      itemCount: list.length,
-                      itemBuilder: (context, idx) {
-                        final p = list[idx];
-                        return PelangganCard(
-                          pelanggan: p,
-                          onTap: () => _openDetailSheet(p),
-                        );
-                      },
                     );
-                  },
-                ),
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: GlassCard(
+                        margin: const EdgeInsets.all(24),
+                        child: Text(
+                          'Terjadi kesalahan: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.redAccent),
+                        ),
+                      ),
+                    );
+                  }
+                  final list = snapshot.data ?? [];
+                  if (list.isEmpty) {
+                    return Center(
+                      child: GlassCard(
+                        margin: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              size: 48,
+                              color: Colors.white.withOpacity(0.4),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _searchQuery.isNotEmpty
+                                  ? 'Tidak ada pelanggan ditemukan'
+                                  : 'Belum ada data pelanggan',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Impor dari Excel (.xlsx) atau tambahkan secara manual.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.5),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    itemCount: list.length,
+                    itemBuilder: (context, idx) {
+                      final p = list[idx];
+                      return PelangganCard(
+                        pelanggan: p,
+                        onTap: () => _openDetailSheet(p),
+                      );
+                    },
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

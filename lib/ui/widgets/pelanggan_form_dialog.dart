@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/pelanggan_model.dart';
-import 'glass_card.dart';
+import '../theme/app_theme.dart';
 
 class PelangganFormDialog extends StatefulWidget {
   final Pelanggan? existing;
@@ -47,136 +47,136 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: GlassCard(
-        margin: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-        padding: const EdgeInsets.all(20),
-        borderRadius: BorderRadius.circular(24),
-        backgroundColor: const Color(0xFF1E1B4B).withOpacity(0.95),
-        borderColor: Colors.white.withOpacity(0.35),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isEdit ? 'Edit Pelanggan' : 'Tambah Pelanggan Baru',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white70),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _field(
-                  _nikCtrl,
-                  'NIK (16 Digit)',
-                  '3201...',
-                  Icons.badge_outlined,
-                  keyboard: TextInputType.number,
-                  formatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(16),
-                  ],
-                  validator: (v) => (v == null || v.trim().length != 16)
-                      ? 'NIK harus 16 digit angka'
-                      : null,
-                ),
-                const SizedBox(height: 10),
-                _field(
-                  _namaCtrl,
-                  'Nama Lengkap',
-                  'Nama sesuai KTP',
-                  Icons.person_outline,
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Nama wajib diisi'
-                      : null,
-                ),
-                const SizedBox(height: 10),
-                _field(
-                  _tglCtrl,
-                  'Tanggal Lahir (YYYY-MM-DD)',
-                  'Pilih dari kalender',
-                  Icons.cake_outlined,
-                  readOnly: true,
-                  onTap: _pickDate,
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Kategori Pelanggan',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(child: _catPill('Rumah Tangga')),
-                    const SizedBox(width: 8),
-                    Expanded(child: _catPill('UMKM')),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _field(
-                  _alamatCtrl,
-                  'Alamat (Opsional)',
-                  'Jl. Melati No. 12',
-                  Icons.home_outlined,
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white70,
-                          side: BorderSide(
-                            color: Colors.white.withOpacity(0.3),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
+      child: Material(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        isEdit ? 'Edit Pelanggan' : 'Tambah Pelanggan Baru',
+                        style: const TextStyle(
+                          color: AppTheme.ink,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
                         ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white70),
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Batal'),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _field(
+                    _nikCtrl,
+                    'NIK (16 Digit)',
+                    '3201...',
+                    Icons.badge_outlined,
+                    keyboard: TextInputType.number,
+                    formatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(16),
+                    ],
+                    validator: (v) => (v == null || v.trim().length != 16)
+                        ? 'NIK harus 16 digit angka'
+                        : null,
+                  ),
+                  const SizedBox(height: 10),
+                  _field(
+                    _namaCtrl,
+                    'Nama Lengkap',
+                    'Nama sesuai KTP',
+                    Icons.person_outline,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Nama wajib diisi'
+                        : null,
+                  ),
+                  const SizedBox(height: 10),
+                  _field(
+                    _tglCtrl,
+                    'Tanggal Lahir (YYYY-MM-DD)',
+                    'Pilih dari kalender',
+                    Icons.cake_outlined,
+                    readOnly: true,
+                    onTap: _pickDate,
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Kategori Pelanggan',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF06B6D4),
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(child: _catPill('Rumah Tangga')),
+                      const SizedBox(width: 8),
+                      Expanded(child: _catPill('UMKM')),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _field(
+                    _alamatCtrl,
+                    'Alamat (Opsional)',
+                    'Jl. Melati No. 12',
+                    Icons.home_outlined,
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white70,
+                            side: BorderSide(
+                              color: Colors.white.withOpacity(0.3),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Batal'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF06B6D4),
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: _submit,
+                          child: Text(
+                            isEdit ? 'Simpan' : 'Tambah',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
-                        onPressed: _submit,
-                        child: Text(
-                          isEdit ? 'Simpan' : 'Tambah',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -287,7 +287,7 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
       inputFormatters: formatters,
       validator: validator,
       maxLines: maxLines,
-      style: const TextStyle(color: Colors.white, fontSize: 14),
+      style: const TextStyle(color: AppTheme.ink, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
