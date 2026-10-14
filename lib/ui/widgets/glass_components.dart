@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'glass_card.dart';
 
@@ -25,28 +24,12 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(72);
   @override
-  Widget build(BuildContext context) => ClipRect(
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-      child: AppBar(
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            letterSpacing: -.3,
-          ),
-        ),
-        backgroundColor: Colors.white.withOpacity(.12),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
-          side: BorderSide(color: Colors.white30),
-        ),
-        surfaceTintColor: Colors.transparent,
-        actions: actions,
-      ),
-    ),
+  Widget build(BuildContext context) => AppBar(
+    title: Text(title),
+    actions: actions,
+    elevation: 0,
+    scrolledUnderElevation: 0,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
   );
 }
 
@@ -68,10 +51,10 @@ class GlassTextField extends StatelessWidget {
   Widget build(BuildContext context) => TextField(
     controller: controller,
     onChanged: onChanged,
-    style: const TextStyle(color: Colors.white),
+    style: const TextStyle(color: Color(0xFF17202A)),
     decoration: InputDecoration(
       hintText: hintText,
-      hintStyle: TextStyle(color: Colors.white.withOpacity(.55)),
+      hintStyle: TextStyle(color: Colors.grey.shade600),
       prefixIcon: prefixIcon == null
           ? null
           : Icon(prefixIcon, color: Colors.white70),

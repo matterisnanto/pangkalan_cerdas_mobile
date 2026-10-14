@@ -1,7 +1,6 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
-/// Shared iOS 17 ambient glass surface. Keep children intrinsically sized.
+/// Shared clean Super-App card. Legacy name retained for compatibility.
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -32,42 +31,16 @@ class GlassCard extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    final radius = borderRadius ?? BorderRadius.circular(22);
-    final surface = backgroundColor ?? Colors.white.withOpacity(.16);
-    final outline = borderColor ?? Colors.white.withOpacity(.35);
-    final shadow =
-        shadows ??
-        const [
-          BoxShadow(
-            color: Color(0x40030A2D),
-            blurRadius: 24,
-            spreadRadius: -6,
-            offset: Offset(0, 10),
-          ),
-        ];
-    Widget card = ClipRRect(
-      borderRadius: radius,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: blurSigma == 0 ? 20 : blurSigma,
-          sigmaY: blurSigma == 0 ? 20 : blurSigma,
-        ),
-        child: Container(
-          width: width,
-          height: height,
-          padding: padding,
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: radius,
-            border: Border.all(
-              color: outline,
-              width: borderWidth == 1 ? 1.2 : borderWidth,
-            ),
-            boxShadow: shadow,
-          ),
-          child: child,
-        ),
+    final radius = borderRadius ?? BorderRadius.circular(16);
+    Widget card = Card(
+      margin: EdgeInsets.zero,
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(color: Colors.grey.shade200, width: borderWidth),
       ),
+      color: backgroundColor ?? Colors.white,
+      child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
     );
     if (onTap != null)
       card = InkWell(borderRadius: radius, onTap: onTap, child: card);

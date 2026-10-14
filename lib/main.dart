@@ -9,6 +9,7 @@ import 'ui/screens/dashboard_screen.dart';
 import 'ui/screens/pelanggan_screen.dart';
 import 'ui/screens/webview_screen.dart';
 import 'ui/widgets/glass_components.dart';
+import 'ui/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,37 +47,7 @@ class PangkalanCerdasApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Pangkalan Cerdas LPG 3Kg',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          brightness: Brightness.light,
-          scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-          colorScheme: const ColorScheme.light(
-            primary: Color(0xFF2563EB),
-            secondary: Color(0xFF10B981),
-            error: Color(0xFFDC2626),
-            surface: Colors.white,
-            onSurface: Color(0xFF0F172A),
-          ),
-          fontFamily: 'Roboto',
-          useMaterial3: true,
-          navigationBarTheme: NavigationBarThemeData(
-            backgroundColor: const Color(0xFF0F172A).withOpacity(0.95),
-            indicatorColor: const Color(0xFF06B6D4).withOpacity(0.3),
-            labelTextStyle: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
-                return const TextStyle(
-                  color: Color(0xFF06B6D4),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                );
-              }
-              return TextStyle(
-                color: Colors.white.withOpacity(0.6),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              );
-            }),
-          ),
-        ),
+        theme: AppTheme.light(),
         home: const MainNavigationScreen(),
       ),
     );
@@ -111,7 +82,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF24205A).withOpacity(0.96),
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Sesi Login Berakhir'),
         content: const Text('Silakan Login Ulang untuk Melanjutkan.'),
