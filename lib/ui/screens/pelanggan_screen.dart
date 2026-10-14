@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
 import '../../models/pelanggan_model.dart';
 import '../../services/pelanggan_service.dart';
 import '../../services/excel_service.dart';
+import '../../services/firebase_service.dart';
+import '../../services/batch_verification_service.dart';
+import '../../services/mypertamina_api_service.dart';
+import '../../providers/auth_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/apple_background.dart';
 import '../widgets/pelanggan_card.dart';
@@ -83,14 +88,31 @@ class _PelangganScreenState extends State<PelangganScreen> {
         _showSnack('Pemilihan file dibatalkan', isError: true);
         return;
       }
-      final list = await ExcelService.importPelanggan(filePath: path);
+      final auth = context.read<AuthProvider>();
+      if (auth.registrationId.isEmpty) {
+        _showSnack('Profil pangkalan belum tersedia', isError: true);
+        return;
+      }
+      final list = await ExcelService.importPelanggan(
+        filePath: path,
+        registrationId: auth.registrationId,
+      );
       if (list.isEmpty) {
         _showSnack('File .xlsx tidak memuat data yang valid', isError: true);
         return;
       }
 
-      final count = await _service.importBatch(list);
-      _showSnack('Berhasil mengimpor $count pelanggan');
+      final result =
+          await BatchVerificationService(
+            api: MyPertaminaApiService(auth.apiClient),
+            firebase: FirebaseService(),
+          ).batchVerifyAndSyncWithMyPertamina(
+            customers: list,
+            registrationId: auth.registrationId,
+          );
+      _showSnack(
+        'Import selesai: ${result.verified} terverifikasi, ${result.failed} gagal',
+      );
     } catch (e) {
       _showSnack('Gagal import: $e', isError: true);
     } finally {

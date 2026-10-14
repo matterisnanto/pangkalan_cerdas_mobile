@@ -105,7 +105,11 @@ class DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 10),
                   TokenStatusWidget(isTokenAvailable: auth.isTokenAvailable),
                   const SizedBox(height: 10),
+                  _buildMetrics(auth, txQueue),
+                  const SizedBox(height: 10),
                   QueueProgressWidget(txQueue: txQueue),
+                  const SizedBox(height: 10),
+                  _buildAutomationControls(txQueue),
                   const SizedBox(height: 10),
                   ActionButtonsWidget(dashboardState: this),
                   const SizedBox(height: 14),
@@ -126,6 +130,106 @@ class DashboardScreenState extends State<DashboardScreen> {
       },
     );
   }
+
+  Widget _buildMetrics(AuthProvider auth, TransactionQueueProvider queue) {
+    final today = _logs.where((l) {
+      final now = DateTime.now();
+      return l.timestamp.year == now.year &&
+          l.timestamp.month == now.month &&
+          l.timestamp.day == now.day;
+    }).toList();
+    final success = _logs.where((l) => l.status == 'BERHASIL').length;
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 8,
+      mainAxisSpacing: 8,
+      childAspectRatio: 2.35,
+      children: [
+        _metric(
+          'Sisa stok',
+          '${auth.stockAvailable}',
+          Icons.inventory_2_outlined,
+        ),
+        _metric(
+          'Terjual hari ini',
+          '${today.where((l) => l.status == 'BERHASIL').length}',
+          Icons.trending_up,
+        ),
+        _metric('Transaksi sukses', '$success', Icons.check_circle_outline),
+        _metric(
+          'Antrean aktif',
+          '${queue.totalQueue}',
+          Icons.auto_awesome_outlined,
+        ),
+      ],
+    );
+  }
+
+  Widget _metric(String label, String value, IconData icon) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(10),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF00AA5B)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildAutomationControls(TransactionQueueProvider queue) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          FilledButton.icon(
+            onPressed: queue.isRunning ? null : executeQueue,
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('Mulai otomatisasi'),
+          ),
+          OutlinedButton.icon(
+            onPressed: queue.isRunning ? queue.pauseQueue : queue.resumeQueue,
+            icon: Icon(queue.isRunning ? Icons.pause : Icons.play_arrow),
+            label: Text(queue.isRunning ? 'Jeda' : 'Lanjutkan'),
+          ),
+          TextButton.icon(
+            onPressed:
+                queue.status == QueueStatus.running ||
+                    queue.status == QueueStatus.paused
+                ? queue.stopQueue
+                : null,
+            icon: const Icon(Icons.stop),
+            label: const Text('Hentikan'),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _buildFilterChips() {
     return Wrap(
@@ -230,10 +334,7 @@ class DashboardScreenState extends State<DashboardScreen> {
         customers: pelangganList,
         registrationId: auth.registrationId,
       );
-      await _firebaseService.savePelangganBatch(
-        pelangganList,
-        auth.registrationId,
-      );
+      // BatchVerificationService already persists verified quota data.
       txQueue.configure(
         apiClient: auth.apiClient,
         registrationId: auth.registrationId,

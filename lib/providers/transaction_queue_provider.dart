@@ -88,8 +88,7 @@ class TransactionQueueProvider extends ChangeNotifier {
     await loadTodayLogs();
 
     for (int i = _currentIndex; i < _queue.length; i++) {
-      if (_status == QueueStatus.paused || _status == QueueStatus.tokenExpired)
-        break;
+      if (_status != QueueStatus.running) break;
       _currentIndex = i;
       notifyListeners();
       await _processTransaction(_queue[i]);
@@ -279,8 +278,25 @@ class TransactionQueueProvider extends ChangeNotifier {
   }
 
   void pauseQueue() {
-    _status = QueueStatus.paused;
-    notifyListeners();
+    if (_status == QueueStatus.running) {
+      _status = QueueStatus.paused;
+      notifyListeners();
+    }
+  }
+
+  /// Stops safely without deleting the current results. A later Start resumes
+  /// from the current item, while Reset clears the queue completely.
+  void stopQueue() {
+    if (_status == QueueStatus.running || _status == QueueStatus.paused) {
+      _status = QueueStatus.idle;
+      notifyListeners();
+    }
+  }
+
+  void resumeQueue() {
+    if (_status == QueueStatus.paused) {
+      executeQueue();
+    }
   }
 
   void reset() {
