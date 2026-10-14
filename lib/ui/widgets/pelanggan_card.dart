@@ -137,13 +137,30 @@ class PelangganCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
   Widget _quotaBadge() {
     final value = pelanggan.sisaKuotaBulanan;
-    final color = value == null || value > 0 ? const Color(0xFF34D399) : const Color(0xFFF87171);
+    final color = value == null || value > 0
+        ? const Color(0xFF34D399)
+        : const Color(0xFFF87171);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(color: color.withOpacity(0.16), borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withOpacity(0.45))),
-      child: Text(value == null ? 'Kuota belum disinkronkan' : 'Sisa Kuota Bulanan: $value Tabung', style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.16),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.45)),
+      ),
+      child: Text(
+        value == null
+            ? 'Kuota belum disinkronkan'
+            : 'Sisa Kuota Bulanan: $value Tabung',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }

@@ -6,6 +6,7 @@ import '../../services/firebase_service.dart';
 import '../../services/batch_verification_service.dart';
 import '../../services/mypertamina_api_service.dart';
 import '../widgets/glass_components.dart';
+import '../widgets/glass_card.dart';
 import '../widgets/apple_background.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -17,6 +18,32 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   int _delay = 3;
   bool _busy = false;
+  final _profiles = List.generate(3, (_) => {'id': '', 'name': ''});
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final storage = SecureStorageService();
+    _delay = await storage.getTransactionDelay();
+    for (var i = 0; i < 3; i++) {
+      _profiles[i] = await storage.getPangkalanProfile(i + 1);
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _saveProfile(int index) async {
+    final profile = _profiles[index];
+    await SecureStorageService().savePangkalanProfile(
+      index + 1,
+      id: profile['id']!,
+      name: profile['name']!,
+    );
+  }
+
   Future<void> _clearSession() async {
     await SecureStorageService().clearAll();
     if (mounted)
@@ -67,6 +94,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 12),
+            ...List.generate(
+              3,
+              (index) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: GlassCard(
+                  child: Column(
+                    children: [
+                      ListTile(
+                        title: Text('Pangkalan ${index + 1}'),
+                        leading: const Icon(Icons.store_outlined),
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'ID Registrasi',
+                        ),
+                        controller: TextEditingController(
+                          text: _profiles[index]['id'],
+                        ),
+                        onChanged: (value) => _profiles[index]['id'] = value,
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'Nama Pangkalan',
+                        ),
+                        controller: TextEditingController(
+                          text: _profiles[index]['name'],
+                        ),
+                        onChanged: (value) => _profiles[index]['name'] = value,
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => _saveProfile(index),
+                          child: const Text('Simpan Profil'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             GlassCard(
               child: ListTile(
                 title: const Text('Jeda transaksi'),
@@ -80,7 +148,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             DropdownMenuItem(value: v, child: Text('$v detik')),
                       )
                       .toList(),
-                  onChanged: (v) => setState(() => _delay = v ?? 3),
+                  onChanged: (v) async {
+                    final value = v ?? 3;
+                    setState(() => _delay = value);
+                    await SecureStorageService().saveTransactionDelay(value);
+                  },
                 ),
               ),
             ),

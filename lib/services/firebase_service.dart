@@ -133,24 +133,42 @@ class FirebaseService {
         data['nationalityId']?.toString();
     final name = data['customerName']?.toString() ?? data['name']?.toString();
     if (nik != null && nik.isNotEmpty && name != null && name.isNotEmpty) {
-      await _pelangganCol(registrationId).doc(nik).set({
+      final familyId =
+          data['encryptedFamilyId']?.toString() ??
+          data['familyIdEncrypted']?.toString();
+      final daily = (data['sisaKuotaHarian'] ?? data['dailyAll']) as num?;
+      final monthly = (data['sisaKuotaBulanan'] ?? data['monthly']) as num?;
+      final family = (data['sisaKuotaKeluarga'] ?? data['familyQuota']) as num?;
+      final customerData = <String, dynamic>{
         'nik': nik,
         'nama': name,
         'kategori': data['category']?.toString() ?? 'Rumah Tangga',
         'registrationId': registrationId,
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      await _db.collection('pelanggan').doc(nik).set({
-        'nik': nik,
-        'nama': name,
-        'kategori': data['category']?.toString() ?? 'Rumah Tangga',
-        'registrationId': registrationId,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+        if (familyId != null && familyId.isNotEmpty)
+          'encryptedFamilyId': familyId,
+        if (daily != null) 'sisaKuotaHarian': daily.toInt(),
+        if (monthly != null) 'sisaKuotaBulanan': monthly.toInt(),
+        if (family != null) 'sisaKuotaKeluarga': family.toInt(),
+      };
+      await _pelangganCol(
+        registrationId,
+      ).doc(nik).set(customerData, SetOptions(merge: true));
+      await _db
+          .collection('pelanggan')
+          .doc(nik)
+          .set(customerData, SetOptions(merge: true));
     }
   }
 
-  Future<void> updatePelangganQuota({required String nik, required String registrationId, required String encryptedFamilyId, required int daily, required int monthly, required int family}) async {
+  Future<void> updatePelangganQuota({
+    required String nik,
+    required String registrationId,
+    required String encryptedFamilyId,
+    required int daily,
+    required int monthly,
+    required int family,
+  }) async {
     final data = {
       'encryptedFamilyId': encryptedFamilyId,
       'sisaKuotaHarian': daily,
@@ -158,8 +176,14 @@ class FirebaseService {
       'sisaKuotaKeluarga': family,
       'lastSyncedAt': FieldValue.serverTimestamp(),
     };
-    await _db.collection('pelanggan').doc(nik).set(data, SetOptions(merge: true));
-    if (registrationId.isNotEmpty) await _pelangganCol(registrationId).doc(nik).set(data, SetOptions(merge: true));
+    await _db
+        .collection('pelanggan')
+        .doc(nik)
+        .set(data, SetOptions(merge: true));
+    if (registrationId.isNotEmpty)
+      await _pelangganCol(
+        registrationId,
+      ).doc(nik).set(data, SetOptions(merge: true));
   }
 
   // ─── Log Transaksi (scoped by registrationId) ───

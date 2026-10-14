@@ -4,6 +4,8 @@ class SecureStorageService {
   static const _tokenKey = 'bearer_token';
   static const _registrationIdKey = 'registration_id';
   static const _storeNameKey = 'store_name';
+  static const _delayKey = 'transaction_delay_seconds';
+  static const _profilePrefix = 'pangkalan_profile_';
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -36,6 +38,29 @@ class SecureStorageService {
   Future<String?> getStoreName() async {
     return _storage.read(key: _storeNameKey);
   }
+
+  Future<void> saveTransactionDelay(int seconds) async {
+    await _storage.write(key: _delayKey, value: seconds.toString());
+  }
+
+  Future<int> getTransactionDelay() async {
+    final value = await _storage.read(key: _delayKey);
+    return int.tryParse(value ?? '')?.clamp(2, 5) ?? 3;
+  }
+
+  Future<void> savePangkalanProfile(
+    int index, {
+    required String id,
+    required String name,
+  }) async {
+    await _storage.write(key: '${_profilePrefix}${index}_id', value: id);
+    await _storage.write(key: '${_profilePrefix}${index}_name', value: name);
+  }
+
+  Future<Map<String, String>> getPangkalanProfile(int index) async => {
+    'id': await _storage.read(key: '${_profilePrefix}${index}_id') ?? '',
+    'name': await _storage.read(key: '${_profilePrefix}${index}_name') ?? '',
+  };
 
   Future<void> clearAll() async {
     await _storage.deleteAll();

@@ -24,6 +24,7 @@ class TransactionQueueProvider extends ChangeNotifier {
   int _currentIndex = 0;
   String? _lastError;
   bool _needsTokenRefresh = false;
+  int _delaySeconds = 3;
 
   List<Pelanggan> get queue => _queue;
   List<LogTransaksi> get results => _results;
@@ -37,9 +38,14 @@ class TransactionQueueProvider extends ChangeNotifier {
   bool get isRunning => _status == QueueStatus.running;
   double get progress => _queue.isEmpty ? 0 : _currentIndex / _queue.length;
 
-  void configure({required ApiClient apiClient, required String registrationId}) {
+  void configure({
+    required ApiClient apiClient,
+    required String registrationId,
+    int delaySeconds = 3,
+  }) {
     _apiClient = apiClient;
     _registrationId = registrationId;
+    _delaySeconds = delaySeconds.clamp(2, 5);
   }
 
   Future<void> loadTodayLogs() async {
@@ -82,7 +88,8 @@ class TransactionQueueProvider extends ChangeNotifier {
     await loadTodayLogs();
 
     for (int i = _currentIndex; i < _queue.length; i++) {
-      if (_status == QueueStatus.paused || _status == QueueStatus.tokenExpired) break;
+      if (_status == QueueStatus.paused || _status == QueueStatus.tokenExpired)
+        break;
       _currentIndex = i;
       notifyListeners();
       await _processTransaction(_queue[i]);
@@ -95,7 +102,7 @@ class TransactionQueueProvider extends ChangeNotifier {
         );
       } catch (_) {}
       if (i < _queue.length - 1 && _status == QueueStatus.running) {
-        await Future.delayed(const Duration(milliseconds: 1500));
+        await Future.delayed(Duration(seconds: _delaySeconds));
       }
     }
     if (_status == QueueStatus.running) {
@@ -115,10 +122,15 @@ class TransactionQueueProvider extends ChangeNotifier {
 
     if (!quotaResult.isValid) {
       final failLog = LogTransaksi(
-        id: '', nik: pelanggan.nik, nama: pelanggan.nama,
-        kategori: pelanggan.kategori, jumlahTabung: 1, status: 'GAGAL',
+        id: '',
+        nik: pelanggan.nik,
+        nama: pelanggan.nama,
+        kategori: pelanggan.kategori,
+        jumlahTabung: 1,
+        status: 'GAGAL',
         pesanError: quotaResult.errorMessage,
-        registrationId: _registrationId, timestamp: DateTime.now(),
+        registrationId: _registrationId,
+        timestamp: DateTime.now(),
       );
       await _firebaseService.saveLogTransaksi(failLog);
       _results.add(failLog);
@@ -131,12 +143,20 @@ class TransactionQueueProvider extends ChangeNotifier {
       final response = await _callVerifyWithRetry(pelanggan.nik);
       final data = response.data;
       final refNo = data is Map<String, dynamic>
-          ? (data['data']?['refNo']?.toString() ?? data['refNo']?.toString() ?? '-')
+          ? (data['data']?['refNo']?.toString() ??
+                data['refNo']?.toString() ??
+                '-')
           : '-';
       final successLog = LogTransaksi(
-        id: '', nik: pelanggan.nik, nama: pelanggan.nama,
-        kategori: pelanggan.kategori, jumlahTabung: 1, status: 'BERHASIL',
-        refNo: refNo, registrationId: _registrationId, timestamp: DateTime.now(),
+        id: '',
+        nik: pelanggan.nik,
+        nama: pelanggan.nama,
+        kategori: pelanggan.kategori,
+        jumlahTabung: 1,
+        status: 'BERHASIL',
+        refNo: refNo,
+        registrationId: _registrationId,
+        timestamp: DateTime.now(),
       );
       await _firebaseService.saveLogTransaksi(successLog);
       _results.add(successLog);
@@ -145,26 +165,37 @@ class TransactionQueueProvider extends ChangeNotifier {
       if (ApiClient.isTokenExpired(e)) {
         _status = QueueStatus.tokenExpired;
         _needsTokenRefresh = true;
-        _lastError = 'Token kadaluarsa. Silakan refresh WebView lalu lanjutkan.';
+        _lastError =
+            'Token kadaluarsa. Silakan refresh WebView lalu lanjutkan.';
         try {
           await NotificationService.showTokenExpiredNotification();
         } catch (_) {}
       }
       final failLog = LogTransaksi(
-        id: '', nik: pelanggan.nik, nama: pelanggan.nama,
-        kategori: pelanggan.kategori, jumlahTabung: 1, status: 'GAGAL',
+        id: '',
+        nik: pelanggan.nik,
+        nama: pelanggan.nama,
+        kategori: pelanggan.kategori,
+        jumlahTabung: 1,
+        status: 'GAGAL',
         pesanError: ApiClient.parseDioError(e),
-        registrationId: _registrationId, timestamp: DateTime.now(),
+        registrationId: _registrationId,
+        timestamp: DateTime.now(),
       );
       await _firebaseService.saveLogTransaksi(failLog);
       _results.add(failLog);
       _todayLogs.add(failLog);
     } catch (e) {
       final failLog = LogTransaksi(
-        id: '', nik: pelanggan.nik, nama: pelanggan.nama,
-        kategori: pelanggan.kategori, jumlahTabung: 1, status: 'GAGAL',
+        id: '',
+        nik: pelanggan.nik,
+        nama: pelanggan.nama,
+        kategori: pelanggan.kategori,
+        jumlahTabung: 1,
+        status: 'GAGAL',
         pesanError: e.toString(),
-        registrationId: _registrationId, timestamp: DateTime.now(),
+        registrationId: _registrationId,
+        timestamp: DateTime.now(),
       );
       await _firebaseService.saveLogTransaksi(failLog);
       _results.add(failLog);
@@ -173,7 +204,10 @@ class TransactionQueueProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<Response> _callVerifyWithRetry(String nik, {int maxRetries = 3}) async {
+  Future<Response> _callVerifyWithRetry(
+    String nik, {
+    int maxRetries = 3,
+  }) async {
     int attempt = 0;
     while (true) {
       try {
@@ -181,7 +215,9 @@ class TransactionQueueProvider extends ChangeNotifier {
       } on DioException catch (e) {
         if (ApiClient.isTokenExpired(e)) rethrow;
         final statusCode = e.response?.statusCode ?? 0;
-        final isRetryable = statusCode >= 500 || statusCode == 429 ||
+        final isRetryable =
+            statusCode >= 500 ||
+            statusCode == 429 ||
             e.type == DioExceptionType.connectionTimeout ||
             e.type == DioExceptionType.receiveTimeout;
         attempt++;
@@ -195,8 +231,10 @@ class TransactionQueueProvider extends ChangeNotifier {
     if (_apiClient == null || _registrationId.isEmpty) return;
     await loadTodayLogs();
     final pelanggan = Pelanggan(
-      nik: failedLog.nik, nama: failedLog.nama,
-      kategori: failedLog.kategori, registrationId: _registrationId,
+      nik: failedLog.nik,
+      nama: failedLog.nama,
+      kategori: failedLog.kategori,
+      registrationId: _registrationId,
     );
     _status = QueueStatus.running;
     notifyListeners();
@@ -210,8 +248,14 @@ class TransactionQueueProvider extends ChangeNotifier {
     final failedLogs = await _firebaseService.getLogGagal(_registrationId);
     if (failedLogs.isEmpty) return;
     final customers = failedLogs
-        .map((l) => Pelanggan(nik: l.nik, nama: l.nama,
-            kategori: l.kategori, registrationId: _registrationId))
+        .map(
+          (l) => Pelanggan(
+            nik: l.nik,
+            nama: l.nama,
+            kategori: l.kategori,
+            registrationId: _registrationId,
+          ),
+        )
         .toList();
     setQueue(customers);
     await executeQueue();
