@@ -1,0 +1,201 @@
+[ +176 ms] Artifact Instance of 'MaterialFonts' is not required, skipping update.
+[        ] Artifact Instance of 'GradleWrapper' is not required, skipping update.
+[        ] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterSdk' is not required, skipping update.
+[        ] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FontSubsetArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'PubDependencies' is not required, skipping update.
+[        ] executing: [C:\xampp\htdocs\flutter/] git -c log.showSignature=false log HEAD -n 1 --pretty=format:%ad --date=iso
+[  +69 ms] Exit code 0 from: git -c log.showSignature=false log HEAD -n 1 --pretty=format:%ad --date=iso
+[        ] 2026-07-23 10:56:21 -0700
+[  +17 ms] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterEngineStamp' is not required, skipping update.
+[        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[   +1 ms] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[  +33 ms] executing: C:\Users\rachm\AppData\Local\Android\sdk\platform-tools\adb.exe devices -l
+[  +62 ms] List of devices attached
+           emulator-5554          device product:sdk_gphone16k_x86_64 model:sdk_gphone16k_x86_64 device:emu64xa16k transport_id:1
+[   +3 ms] C:\Users\rachm\AppData\Local\Android\sdk\platform-tools\adb.exe -s emulator-5554 shell getprop
+[  +78 ms] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterEngineStamp' is not required, skipping update.
+[   +2 ms] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[  +97 ms] Skipping pub get: version match.
+[ +152 ms] Found plugin permission_handler at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler-11.4.0\
+[   +4 ms] Found plugin permission_handler_windows at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler_windows-0.2.2\
+[   +4 ms] Found plugin permission_handler_html at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler_html-0.1.4+1\
+[   +4 ms] Found plugin permission_handler_apple at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler_apple-9.6.2\
+[   +4 ms] Found plugin permission_handler_android at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler_android-12.1.0\
+[   +3 ms] Found plugin path_provider at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider-2.1.6\
+[   +1 ms] Found plugin path_provider_windows at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_windows-2.3.0\
+[   +5 ms] Found plugin path_provider_linux at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_linux-2.2.2\
+[   +4 ms] Found plugin path_provider_foundation at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_foundation-2.6.0\
+[  +11 ms] Found plugin path_provider_android at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_android-2.3.1\
+[   +1 ms] Found plugin jni_flutter at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\jni_flutter-1.0.4+1\
+[   +3 ms] Found plugin jni at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\jni-1.1.0\
+[   +5 ms] Found plugin flutter_secure_storage at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage-9.2.4\
+[   +1 ms] Found plugin flutter_secure_storage_windows at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage_windows-3.1.2\
+[   +5 ms] Found plugin flutter_secure_storage_web at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage_web-1.2.1\
+[   +4 ms] Found plugin flutter_secure_storage_macos at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage_macos-3.1.3\
+[   +1 ms] Found plugin flutter_secure_storage_linux at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage_linux-1.2.3\
+[   +1 ms] Found plugin flutter_local_notifications at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_local_notifications-18.0.1\
+[   +6 ms] Found plugin flutter_local_notifications_linux at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_local_notifications_linux-5.0.0\
+[   +6 ms] Found plugin flutter_inappwebview at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview-6.1.5\
+[   +1 ms] Found plugin flutter_inappwebview_windows at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_windows-0.6.0\
+[   +3 ms] Found plugin flutter_inappwebview_web at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_web-1.1.2\
+[   +1 ms] Found plugin flutter_inappwebview_macos at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_macos-1.1.2\
+[   +1 ms] Found plugin flutter_inappwebview_ios at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_ios-1.1.2\
+[   +1 ms] Found plugin flutter_inappwebview_android at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_android-1.1.3\
+[   +1 ms] Found plugin firebase_core at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\firebase_core-3.15.2\
+[   +1 ms] Found plugin firebase_core_web at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\firebase_core_web-2.24.1\
+[  +12 ms] Found plugin cloud_firestore at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\cloud_firestore-5.6.12\
+[   +1 ms] Found plugin cloud_firestore_web at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\cloud_firestore_web-4.4.12\
+[  +55 ms] Found plugin permission_handler at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler-11.4.0\
+[   +2 ms] Found plugin permission_handler_windows at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler_windows-0.2.2\
+[   +3 ms] Found plugin permission_handler_html at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler_html-0.1.4+1\
+[   +2 ms] Found plugin permission_handler_apple at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler_apple-9.6.2\
+[   +2 ms] Found plugin permission_handler_android at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler_android-12.1.0\
+[   +1 ms] Found plugin path_provider at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider-2.1.6\
+[   +1 ms] Found plugin path_provider_windows at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_windows-2.3.0\
+[   +3 ms] Found plugin path_provider_linux at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_linux-2.2.2\
+[   +1 ms] Found plugin path_provider_foundation at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_foundation-2.6.0\
+[   +6 ms] Found plugin path_provider_android at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_android-2.3.1\
+[   +1 ms] Found plugin jni_flutter at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\jni_flutter-1.0.4+1\
+[   +1 ms] Found plugin jni at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\jni-1.1.0\
+[   +4 ms] Found plugin flutter_secure_storage at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage-9.2.4\
+[   +1 ms] Found plugin flutter_secure_storage_windows at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage_windows-3.1.2\
+[   +2 ms] Found plugin flutter_secure_storage_web at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage_web-1.2.1\
+[   +1 ms] Found plugin flutter_secure_storage_macos at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage_macos-3.1.3\
+[        ] Found plugin flutter_secure_storage_linux at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage_linux-1.2.3\
+[        ] Found plugin flutter_local_notifications at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_local_notifications-18.0.1\
+[   +5 ms] Found plugin flutter_local_notifications_linux at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_local_notifications_linux-5.0.0\
+[   +4 ms] Found plugin flutter_inappwebview at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview-6.1.5\
+[   +1 ms] Found plugin flutter_inappwebview_windows at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_windows-0.6.0\
+[   +2 ms] Found plugin flutter_inappwebview_web at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_web-1.1.2\
+[   +1 ms] Found plugin flutter_inappwebview_macos at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_macos-1.1.2\
+[   +1 ms] Found plugin flutter_inappwebview_ios at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_ios-1.1.2\
+[   +1 ms] Found plugin flutter_inappwebview_android at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_android-1.1.3\
+[   +1 ms] Found plugin firebase_core at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\firebase_core-3.15.2\
+[        ] Found plugin firebase_core_web at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\firebase_core_web-2.24.1\
+[   +7 ms] Found plugin cloud_firestore at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\cloud_firestore-5.6.12\
+[   +1 ms] Found plugin cloud_firestore_web at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\cloud_firestore_web-4.4.12\
+[   +5 ms] Generating D:\permanen\pangkalan_cerdas_mobile\pangkalan_cerdas_mobile\android\app\src\main\java\io\flutter\plugins\GeneratedPluginRegistrant.java
+[   +7 ms] Skipping generating GeneratedPluginRegistrant.java because it is up-to-date.
+[   +2 ms] ro.hardware = ranchu
+[  +61 ms] Initializing file store
+[  +11 ms] Skipping target: gen_localizations
+[   +2 ms] gen_dart_plugin_registrant: Starting due to {InvalidatedReasonKind.inputChanged: The following inputs have updated contents: D:\permanen\pangkalan_cerdas_mobile\pangkalan_cerdas_mobile\.dart_tool\package_config.json,D:\permanen\pangkalan_cerdas_mobile\pangkalan_cerdas_mobile\.dart_tool\flutter_build\dart_plugin_registrant.dart}
+[  +35 ms] Found plugin permission_handler at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler-11.4.0\
+[   +1 ms] Found plugin permission_handler_windows at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler_windows-0.2.2\
+[   +3 ms] Found plugin permission_handler_html at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler_html-0.1.4+1\
+[   +2 ms] Found plugin permission_handler_apple at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler_apple-9.6.2\
+[   +1 ms] Found plugin permission_handler_android at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\permission_handler_android-12.1.0\
+[   +1 ms] Found plugin path_provider at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider-2.1.6\
+[        ] Found plugin path_provider_windows at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_windows-2.3.0\
+[  +15 ms] Found plugin path_provider_linux at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_linux-2.2.2\
+[   +1 ms] Found plugin path_provider_foundation at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_foundation-2.6.0\
+[   +5 ms] Found plugin path_provider_android at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_android-2.3.1\
+[        ] Found plugin jni_flutter at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\jni_flutter-1.0.4+1\
+[   +1 ms] Found plugin jni at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\jni-1.1.0\
+[   +4 ms] Found plugin flutter_secure_storage at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage-9.2.4\
+[   +1 ms] Found plugin flutter_secure_storage_windows at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage_windows-3.1.2\
+[   +2 ms] Found plugin flutter_secure_storage_web at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage_web-1.2.1\
+[   +1 ms] Found plugin flutter_secure_storage_macos at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage_macos-3.1.3\
+[        ] Found plugin flutter_secure_storage_linux at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_secure_storage_linux-1.2.3\
+[   +1 ms] Found plugin flutter_local_notifications at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_local_notifications-18.0.1\
+[   +3 ms] Found plugin flutter_local_notifications_linux at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_local_notifications_linux-5.0.0\
+[   +4 ms] Found plugin flutter_inappwebview at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview-6.1.5\
+[   +1 ms] Found plugin flutter_inappwebview_windows at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_windows-0.6.0\
+[   +2 ms] Found plugin flutter_inappwebview_web at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_web-1.1.2\
+[        ] Found plugin flutter_inappwebview_macos at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_macos-1.1.2\
+[   +1 ms] Found plugin flutter_inappwebview_ios at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_ios-1.1.2\
+[   +1 ms] Found plugin flutter_inappwebview_android at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_inappwebview_android-1.1.3\
+[   +1 ms] Found plugin firebase_core at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\firebase_core-3.15.2\
+[   +1 ms] Found plugin firebase_core_web at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\firebase_core_web-2.24.1\
+[   +9 ms] Found plugin cloud_firestore at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\cloud_firestore-5.6.12\
+[   +7 ms] Found plugin cloud_firestore_web at C:\Users\rachm\AppData\Local\Pub\Cache\hosted\pub.dev\cloud_firestore_web-4.4.12\
+[   +8 ms] Skipping generating dart_plugin_registrant.dart because it is up-to-date.
+[        ] gen_dart_plugin_registrant: Complete
+[   +1 ms] Skipping target: _composite
+[   +1 ms] complete
+[   +3 ms] Launching lib\main.dart on sdk gphone16k x86 64 in debug mode...
+[   +2 ms] C:\xampp\htdocs\flutter\bin\cache\dart-sdk\bin\dartaotruntime.exe C:\xampp\htdocs\flutter\bin\cache\dart-sdk\bin\snapshots\frontend_server_aot.dart.snapshot --sdk-root C:\xampp\htdocs\flutter\bin\cache\artifacts\engine\common\flutter_patched_sdk/ --incremental --target=flutter --experimental-emit-debug-metadata -DFLUTTER_VERSION=3.44.8 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=058e0af2c2 -DFLUTTER_ENGINE_REVISION=0cd610717b -DFLUTTER_DART_VERSION=3.12.2 --output-dill C:\Users\rachm\AppData\Local\Temp\flutter_tools.fd3ea386\flutter_tool.5e38feca\app.dill --packages D:\permanen\pangkalan_cerdas_mobile\pangkalan_cerdas_mobile\.dart_tool\package_config.json -Ddart.vm.profile=false -Ddart.vm.product=false --enable-asserts --track-widget-creation --filesystem-scheme org-dartlang-root --initialize-from-dill build\e09161ed6a8240f7110db5db6f6e90b3.cache.dill.track.dill --source file:///D:/permanen/pangkalan_cerdas_mobile/pangkalan_cerdas_mobile/.dart_tool/flutter_build/dart_plugin_registrant.dart --source package:flutter/src/dart_plugin_registrant.dart -Dflutter.dart_plugin_registrant=file:///D:/permanen/pangkalan_cerdas_mobile/pangkalan_cerdas_mobile/.dart_tool/flutter_build/dart_plugin_registrant.dart --verbosity=error --enable-experiment=alternative-invalidation-strategy
+[   +6 ms] executing: C:\Users\rachm\AppData\Local\Android\sdk\platform-tools\adb.exe -s emulator-5554 shell -x logcat -v time -t 1
+[  +12 ms] <- compile package:pangkalan_cerdas_mobile/main.dart
+[  +96 ms] --------- beginning of main
+           10-13 23:55:06.528 I/adbd    (  553): adbd service requested 'shell:logcat -v time -t 1'
+[  +11 ms] executing: C:\Users\rachm\AppData\Local\Android\sdk\platform-tools\adb.exe version
+[  +89 ms] Android Debug Bridge version 1.0.41
+           Version 37.0.1-15733141
+           Installed as C:\Users\rachm\AppData\Local\Android\sdk\platform-tools\adb.exe
+           Running on Windows 10.0.26200
+[        ] executing: C:\Users\rachm\AppData\Local\Android\sdk\platform-tools\adb.exe start-server
+[  +57 ms] Building APK
+[   +7 ms] executing: C:\Program Files\Android\Android Studio\jbr\bin\java -version
+[ +133 ms] Exit code 0 from: C:\Program Files\Android\Android Studio\jbr\bin\java -version
+[        ] openjdk version "25.0.2" 2026-01-20
+           OpenJDK Runtime Environment (build 25.0.2+-15348964-b329.117)
+           OpenJDK 64-Bit Server VM (build 25.0.2+-15348964-b329.117, mixed mode)
+[   +7 ms] Top-level Gradle build file not found, skipping migration of task "clean".
+[   +2 ms] executing: C:\Program Files\Android\Android Studio\jbr\bin\java --version
+[ +158 ms] Exit code 0 from: C:\Program Files\Android\Android Studio\jbr\bin\java --version
+[        ] openjdk 25.0.2 2026-01-20
+           OpenJDK Runtime Environment (build 25.0.2+-15348964-b329.117)
+           OpenJDK 64-Bit Server VM (build 25.0.2+-15348964-b329.117, mixed mode)
+[   +1 ms] Version of Java is different than impacted version, no migration attempted.
+[   +2 ms] CMake project not found, skipping support Android 15 16k page size migration.
+[   +1 ms] The developer has already configured the Built-In Kotlin flag, skipping migration.
+[   +1 ms] The developer has already configured the new DSL flag, skipping migration.
+[   +4 ms] Using gradle from D:\permanen\pangkalan_cerdas_mobile\pangkalan_cerdas_mobile\android\gradlew.bat.
+[   +8 ms] LocalFile: 'D:\permanen\pangkalan_cerdas_mobile\pangkalan_cerdas_mobile\android\build.gradle.kts' doesn't provide an AGP version. Checking settings.
+[        ] LocalFile: 'D:\permanen\pangkalan_cerdas_mobile\pangkalan_cerdas_mobile\android\settings.gradle.kts' provides AGP version: 9.0.1
+[  +22 ms] Running Gradle task 'assembleDebug'...
+[        ] executing: [D:\permanen\pangkalan_cerdas_mobile\pangkalan_cerdas_mobile\android/] D:\permanen\pangkalan_cerdas_mobile\pangkalan_cerdas_mobile\android\gradlew.bat --full-stacktrace --info -Pverbose=true -Ptarget-platform=android-x64 -Ptarget=D:\permanen\pangkalan_cerdas_mobile\pangkalan_cerdas_mobile\lib\main.dart -Pbase-application-name=android.app.Application -Pdart-defines=RkxVVFRFUl9WRVJTSU9OPTMuNDQuOA==,RkxVVFRFUl9DSEFOTkVMPXN0YWJsZQ==,RkxVVFRFUl9HSVRfVVJMPWh0dHBzOi8vZ2l0aHViLmNvbS9mbHV0dGVyL2ZsdXR0ZXIuZ2l0,RkxVVFRFUl9GUkFNRVdPUktfUkVWSVNJT049MDU4ZTBhZjJjMg==,RkxVVFRFUl9FTkdJTkVfUkVWSVNJT049MGNkNjEwNzE3Yg==,RkxVVFRFUl9EQVJUX1ZFUlNJT049My4xMi4y -Pdart-obfuscation=false -Ptrack-widget-creation=true -Ptree-shake-icons=false -Pfilesystem-scheme=org-dartlang-root assembleDebug
+[   +2 ms] Initialized native services in: C:\Users\rachm\.gradle\native
+[   +2 ms] Initialized jansi services in: C:\Users\rachm\.gradle\native
+[ +133 ms] Received JVM installation metadata from 'C:\Program Files\Android\Android Studio\jbr': {JAVA_HOME=C:\Program Files\Android\Android Studio\jbr, JAVA_VERSION=25.0.2, JAVA_VENDOR=JetBrains s.r.o., RUNTIME_NAME=OpenJDK Runtime Environment, RUNTIME_VERSION=25.0.2+-15348964-b329.117, VM_NAME=OpenJDK 64-Bit Server VM, VM_VERSION=25.0.2+-15348964-b329.117, VM_VENDOR=JetBrains s.r.o., OS_ARCH=amd64}
+[ +295 ms] The client will now receive all logging from the daemon (pid: 19616). The daemon log file: C:\Users\rachm\.gradle\daemon\8.7\daemon-19616.out.log
+[        ] Starting 8th build in daemon [uptime: 11 mins 24.763 secs, performance: 99%, GC rate: 0.00/s, heap usage: 0% of 8 GiB, non-heap usage: 1% of 4 GiB]
+[        ] Using 8 worker leases.
+[   +5 ms] Now considering [D:\permanen\pangkalan_cerdas_mobile\pangkalan_cerdas_mobile\android] as hierarchies to watch
+[        ] Watching the file system is configured to be enabled if available
+[        ] File system watching is active
+[        ] Starting Build
+[        ] Caching disabled for Kotlin DSL script compilation (Settings/TopLevel/stage1) because:
+[   +1 ms]   Build cache is disabled
+[        ] Watched directory hierarchies: []
+[ +311 ms] Running Gradle task 'assembleDebug'... (completed in 1,891ms)
+[   +1 ms] "flutter run" took 12,541ms.
+[        ] Running 3 shutdown hooks
+[  +13 ms] Shutdown hooks complete
+[  +95 ms] exiting with code 1
