@@ -7,6 +7,9 @@ import '../../providers/auth_provider.dart';
 import '../../providers/transaction_queue_provider.dart';
 import '../../services/firebase_service.dart';
 import '../../services/excel_service.dart';
+import '../../services/batch_verification_service.dart';
+import '../../services/mypertamina_api_service.dart';
+import 'settings_screen.dart';
 import '../widgets/token_status_widget.dart';
 import '../widgets/profile_header_widget.dart';
 import '../widgets/log_transaksi_table.dart';
@@ -71,6 +74,14 @@ class DashboardScreenState extends State<DashboardScreen> {
                 icon: const Icon(Icons.language),
                 tooltip: 'Buka WebView',
                 onPressed: () => _openWebView(context),
+              ),
+              IconButton(
+                icon: const Icon(Icons.settings_outlined),
+                tooltip: 'Pengaturan',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.refresh),
@@ -210,6 +221,14 @@ class DashboardScreenState extends State<DashboardScreen> {
         _showSnack('File kosong atau format tidak sesuai');
         return;
       }
+      final verification = BatchVerificationService(
+        api: MyPertaminaApiService(auth.apiClient),
+        firebase: _firebaseService,
+      );
+      final syncResult = await verification.batchVerifyAndSyncWithMyPertamina(
+        customers: pelangganList,
+        registrationId: auth.registrationId,
+      );
       await _firebaseService.savePelangganBatch(
         pelangganList,
         auth.registrationId,
@@ -219,7 +238,9 @@ class DashboardScreenState extends State<DashboardScreen> {
         registrationId: auth.registrationId,
       );
       txQueue.setQueue(pelangganList);
-      _showSnack('${pelangganList.length} pelanggan diimpor');
+      _showSnack(
+        '${pelangganList.length} pelanggan diimpor; ${syncResult.verified} terverifikasi, ${syncResult.failed} gagal',
+      );
     } catch (e) {
       _showSnack('Error import: $e');
     } finally {

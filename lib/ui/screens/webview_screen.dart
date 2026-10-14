@@ -203,7 +203,7 @@ class _WebViewScreenState extends State<WebViewScreen>
   window.__pcTransactionBridge = true;
   function forward(url, body) {
     if (!url || !body) return;
-    if (url.indexOf('/general/v1/transactions/') < 0 && url.indexOf('/general/v3/transactions/report') < 0) return;
+    if (url.indexOf('/general/v1/transactions/') < 0 && url.indexOf('/general/v2/transactions') < 0 && url.indexOf('/general/v3/transactions/report') < 0) return;
     try { var parsed = typeof body === 'string' ? JSON.parse(body) : body; window.flutter_inappwebview.callHandler('myPertaminaTransaction', parsed); } catch (_) {}
   }
   const originalFetch = window.fetch;
