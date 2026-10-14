@@ -57,6 +57,19 @@ class TransactionQueueProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void addToQueue(Pelanggan customer) {
+    _queue.add(customer);
+    notifyListeners();
+  }
+
+  void clearQueue() {
+    _queue.clear();
+    _results = [];
+    _currentIndex = 0;
+    _status = QueueStatus.idle;
+    notifyListeners();
+  }
+
   Future<void> executeQueue() async {
     if (_apiClient == null || _registrationId.isEmpty) {
       _lastError = 'API Client atau registrationId belum dikonfigurasi';

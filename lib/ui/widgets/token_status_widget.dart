@@ -12,9 +12,7 @@ class TokenStatusWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: isTokenAvailable ? Colors.green.shade50 : Colors.red.shade50,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isTokenAvailable ? Colors.green : Colors.red,
-        ),
+        border: Border.all(color: isTokenAvailable ? Colors.green : Colors.red),
       ),
       child: Row(
         children: [
@@ -25,9 +23,13 @@ class TokenStatusWidget extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            isTokenAvailable ? 'Token Terdeteksi' : 'Token Kadaluarsa / Belum Ada',
+            isTokenAvailable
+                ? 'Token Terdeteksi'
+                : 'Token Kadaluarsa / Belum Ada',
             style: TextStyle(
-              color: isTokenAvailable ? Colors.green.shade800 : Colors.red.shade800,
+              color: isTokenAvailable
+                  ? Colors.green.shade800
+                  : Colors.red.shade800,
               fontWeight: FontWeight.w600,
               fontSize: 13,
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../models/pangkalan.dart';
 import '../services/api_client.dart';
 import '../services/secure_storage_service.dart';
@@ -12,10 +13,12 @@ class AuthProvider extends ChangeNotifier {
   String? _token;
   Pangkalan? _pangkalan;
   bool _isLoading = false;
+  bool _isTokenValid = false;
   String? _errorMessage;
+  VoidCallback? onTokenExpired;
 
   AuthProvider() {
-    _apiClient = ApiClient(_storage);
+    _apiClient = ApiClient(_storage, onTokenExpired: _handleTokenExpired);
     _loadSavedState();
   }
 
@@ -24,6 +27,14 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isTokenAvailable => _token != null && _token!.isNotEmpty;
+  bool get isTokenValid => _isTokenValid;
+
+  void _handleTokenExpired() {
+    _token = null;
+    _isTokenValid = false;
+    notifyListeners();
+    onTokenExpired?.call();
+  }
   String get registrationId => _pangkalan?.registrationId ?? '';
   String get storeName => _pangkalan?.storeName ?? '';
   int get stockAvailable => _pangkalan?.stockAvailable ?? 0;
@@ -41,6 +52,7 @@ class AuthProvider extends ChangeNotifier {
   /// Called when WebView interceptor captures a Bearer token
   Future<void> onTokenCaptured(String newToken) async {
     _token = newToken;
+    _isTokenValid = true;
     await _storage.saveToken(newToken);
     notifyListeners();
     await fetchUserProfile();

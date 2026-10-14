@@ -42,22 +42,29 @@ class ProfileHeaderWidget extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text('ID: $registrationId',
-                      style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                  Text(
+                    'ID: $registrationId',
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Stok Tersedia: $stockAvailable tabung',
-                      style: const TextStyle(
-                          color: Colors.greenAccent,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    'Stok Tersedia: $stockAvailable tabung',
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               )
             : const Row(
                 children: [
                   Icon(Icons.info_outline, color: Colors.white70),
                   SizedBox(width: 10),
-                  Text('Belum login. Buka WebView untuk login.',
-                      style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  Text(
+                    'Belum login. Buka WebView untuk login.',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
                 ],
               ),
       ),

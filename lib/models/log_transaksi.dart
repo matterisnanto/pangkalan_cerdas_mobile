@@ -26,6 +26,7 @@ class LogTransaksi {
   });
 
   bool get isBerhasil => status == 'BERHASIL';
+  bool get isSuccess => isBerhasil;
   bool get isGagal => status == 'GAGAL';
 
   factory LogTransaksi.fromJson(Map<String, dynamic> json, {String? docId}) {

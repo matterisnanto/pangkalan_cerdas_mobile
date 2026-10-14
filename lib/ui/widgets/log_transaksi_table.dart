@@ -18,8 +18,10 @@ class LogTransaksiTable extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.all(24),
         alignment: Alignment.center,
-        child: const Text('Belum ada log transaksi',
-            style: TextStyle(color: Colors.grey)),
+        child: const Text(
+          'Belum ada log transaksi',
+          style: TextStyle(color: Colors.grey),
+        ),
       );
     }
 
@@ -39,8 +41,7 @@ class LogTransaksiTable extends StatelessWidget {
             dense: true,
             leading: CircleAvatar(
               radius: 14,
-              backgroundColor:
-                  isBerhasil ? Colors.green : Colors.red,
+              backgroundColor: isBerhasil ? Colors.green : Colors.red,
               child: Icon(
                 isBerhasil ? Icons.check : Icons.close,
                 color: Colors.white,
@@ -53,7 +54,9 @@ class LogTransaksiTable extends StatelessWidget {
                   child: Text(
                     log.nama.isEmpty ? log.nik : log.nama,
                     style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 13),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -73,21 +76,22 @@ class LogTransaksiTable extends StatelessWidget {
                 if (!isBerhasil && log.pesanError != null)
                   Text(
                     log.pesanError!,
-                    style: const TextStyle(
-                        color: Colors.red, fontSize: 11),
+                    style: const TextStyle(color: Colors.red, fontSize: 11),
                   ),
                 if (isBerhasil && log.refNo != null)
                   Text(
                     'Ref: ${log.refNo}',
-                    style: const TextStyle(
-                        color: Colors.green, fontSize: 11),
+                    style: const TextStyle(color: Colors.green, fontSize: 11),
                   ),
               ],
             ),
             trailing: !isBerhasil
                 ? IconButton(
-                    icon: const Icon(Icons.refresh,
-                        color: Colors.orange, size: 20),
+                    icon: const Icon(
+                      Icons.refresh,
+                      color: Colors.orange,
+                      size: 20,
+                    ),
                     tooltip: 'Retry NIK ini',
                     onPressed: () => onRetrySingle(log),
                   )

@@ -17,6 +17,12 @@ class ActionButtonsWidget extends StatelessWidget {
       runSpacing: 8,
       children: [
         _btn(
+          icon: Icons.person_search,
+          label: 'Pilih Pelanggan',
+          color: const Color(0xFF06B6D4),
+          onPressed: dashboardState.pickCustomerForTransaction,
+        ),
+        _btn(
           icon: Icons.upload_file,
           label: 'Import Pelanggan',
           color: Colors.teal,
@@ -70,8 +76,13 @@ class ActionButtonsWidget extends StatelessWidget {
       onPressed: loading ? null : onPressed,
       icon: loading
           ? const SizedBox(
-              width: 16, height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
           : Icon(icon, size: 18),
       label: Text(label, style: const TextStyle(fontSize: 13)),
     );

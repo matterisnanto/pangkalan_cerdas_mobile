@@ -18,8 +18,10 @@ class QueueProgressWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Antrean: ${txQueue.currentIndex}/${txQueue.totalQueue}',
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'Antrean: ${txQueue.currentIndex}/${txQueue.totalQueue}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 6),
             LinearProgressIndicator(value: txQueue.progress),
             const SizedBox(height: 6),
@@ -29,18 +31,23 @@ class QueueProgressWidget extends StatelessWidget {
                 const SizedBox(width: 8),
                 _chip('Gagal', txQueue.failCount, Colors.red),
                 const Spacer(),
-                Text(txQueue.status.name.toUpperCase(),
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: txQueue.needsTokenRefresh
-                            ? Colors.red
-                            : Colors.blue.shade800)),
+                Text(
+                  txQueue.status.name.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: txQueue.needsTokenRefresh
+                        ? Colors.red
+                        : Colors.blue.shade800,
+                  ),
+                ),
               ],
             ),
             if (txQueue.lastError != null) ...[
               const SizedBox(height: 4),
-              Text(txQueue.lastError!,
-                  style: const TextStyle(color: Colors.red, fontSize: 12)),
+              Text(
+                txQueue.lastError!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
             ],
           ],
         ),
@@ -50,8 +57,10 @@ class QueueProgressWidget extends StatelessWidget {
 
   Widget _chip(String label, int count, Color color) {
     return Chip(
-      label: Text('$label: $count',
-          style: const TextStyle(color: Colors.white, fontSize: 12)),
+      label: Text(
+        '$label: $count',
+        style: const TextStyle(color: Colors.white, fontSize: 12),
+      ),
       backgroundColor: color,
       visualDensity: VisualDensity.compact,
     );

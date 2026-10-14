@@ -94,6 +94,33 @@ void main() {
       expect(restored.nama, p.nama);
       expect(restored.kategori, p.kategori);
     });
+    test('Pelanggan with Tanggal Lahir and Alamat serialization', () {
+      final p = Pelanggan(
+        id: 'cust123',
+        nik: '3201234567890001',
+        nama: 'Siti Aminah',
+        tanggalLahir: '1995-08-17',
+        kategori: 'Rumah Tangga',
+        alamat: 'Jl. Merdeka No. 45',
+        createdAt: DateTime(2025, 1, 1),
+      );
+      final json = p.toJson();
+      expect(json['nik'], '3201234567890001');
+      expect(json['tanggalLahir'], '1995-08-17');
+      expect(json['alamat'], 'Jl. Merdeka No. 45');
+      // Verify registrationId is not in customer JSON
+      expect(json.containsKey('registrationId'), false);
+
+      final restored = Pelanggan.fromJson(json, docId: 'cust123');
+      expect(restored.id, 'cust123');
+      expect(restored.nik, p.nik);
+      expect(restored.nama, p.nama);
+      expect(restored.tanggalLahir, '1995-08-17');
+      expect(restored.kategori, 'Rumah Tangga');
+      expect(json.containsKey('noHp'), false);
+      expect(restored.alamat, 'Jl. Merdeka No. 45');
+    });
+
 
     test('Pangkalan toJson and fromJson', () {
       final p = Pangkalan(
@@ -111,5 +138,29 @@ void main() {
       expect(restored.sold, 822);
     });
   });
+    test('LogTransaksi toJson and fromJson', () {
+      final now = DateTime.now();
+      final log = LogTransaksi(
+        id: 'tx_001',
+        nik: '1234567890123456',
+        nama: 'Ahmad',
+        kategori: 'RUMAH_TANGGA',
+        jumlahTabung: 2,
+        status: 'BERHASIL',
+        pesanError: null,
+        registrationId: '316920704188009',
+        timestamp: now,
+      );
+      final json = log.toJson();
+      expect(json['nik'], '1234567890123456');
+      expect(json['status'], 'BERHASIL');
+
+      final restored = LogTransaksi.fromJson(json, docId: 'tx_001');
+      expect(restored.id, 'tx_001');
+      expect(restored.nik, log.nik);
+      expect(restored.jumlahTabung, 2);
+      expect(restored.status, 'BERHASIL');
+    });
+
 }
 

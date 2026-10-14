@@ -10,9 +10,10 @@ class ApiClient {
       '(KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36';
 
   final SecureStorageService _storage;
+  final void Function()? onTokenExpired;
   late final Dio _dio;
 
-  ApiClient(this._storage) {
+  ApiClient(this._storage, {this.onTokenExpired}) {
     _dio = Dio(BaseOptions(
       baseUrl: _baseUrl,
       connectTimeout: const Duration(seconds: 15),
@@ -30,7 +31,11 @@ class ApiClient {
         options.headers['User-Agent'] = _userAgent;
         handler.next(options);
       },
-      onError: (error, handler) {
+      onError: (error, handler) async {
+        if (_isExpiredResponse(error)) {
+          await _storage.deleteToken();
+          onTokenExpired?.call();
+        }
         handler.next(error);
       },
     ));
@@ -65,6 +70,12 @@ class ApiClient {
         'sort': sort,
       },
     );
+  }
+
+  bool _isExpiredResponse(DioException error) {
+    final code = error.response?.statusCode;
+    final body = error.response?.data?.toString().toLowerCase() ?? '';
+    return code == 401 || code == 403 || body.contains('token expired');
   }
 
   /// Parse DioException into readable message
