@@ -2,45 +2,73 @@ import 'package:flutter/material.dart';
 
 abstract final class AppTheme {
   static const emerald = Color(0xFF00AA5B);
+  static const darkEmerald = Color(0xFF10B981);
   static const indigo = Color(0xFF0063F7);
-  static const ink = Color(0xFF17202A);
-  static const softWhite = Color(0xFFF8F9FA);
-  static const field = Color(0xFFF1F3F5);
+  static const ink = Color(0xFF212529);
+  static const ice = Color(0xFFF8FAFC);
+  static const lightScaffold = Color(0xFFF8F9FA);
+  static const darkScaffold = Color(0xFF0F172A);
 
-  static ThemeData light() {
+  static ThemeData light() => _build(
+    Brightness.light,
+    emerald,
+    lightScaffold,
+    Colors.white,
+    ink,
+    const Color(0xFFE9ECEF),
+    const Color(0xFFF1F3F5),
+  );
+  static ThemeData dark() => _build(
+    Brightness.dark,
+    darkEmerald,
+    darkScaffold,
+    const Color(0xFF1E293B),
+    ice,
+    const Color(0xFF334155),
+    const Color(0xFF1E293B),
+  );
+
+  static ThemeData _build(
+    Brightness brightness,
+    Color primary,
+    Color scaffold,
+    Color surface,
+    Color text,
+    Color border,
+    Color field,
+  ) {
     final scheme = ColorScheme.fromSeed(
-      seedColor: emerald,
-      brightness: Brightness.light,
-      primary: emerald,
-      secondary: indigo,
-      surface: Colors.white,
+      seedColor: primary,
+      brightness: brightness,
+      primary: primary,
+      surface: surface,
+      onSurface: text,
       error: const Color(0xFFD64545),
     );
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
+      brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: softWhite,
+      scaffoldBackgroundColor: scaffold,
       fontFamily: 'Roboto',
-      appBarTheme: const AppBarTheme(
-        backgroundColor: softWhite,
-        foregroundColor: ink,
+      appBarTheme: AppBarTheme(
+        backgroundColor: scaffold,
+        foregroundColor: text,
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: false,
         titleTextStyle: TextStyle(
-          color: ink,
+          color: text,
           fontSize: 20,
           fontWeight: FontWeight.w700,
         ),
       ),
       cardTheme: CardThemeData(
-        color: Colors.white,
-        elevation: 1,
+        color: surface,
+        elevation: brightness == Brightness.dark ? 0 : 1,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Colors.grey.shade200),
+          side: BorderSide(color: border, width: 1.1),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -56,24 +84,24 @@ abstract final class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide: BorderSide(color: border),
         ),
-        focusedBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(color: emerald, width: 1.5),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: primary, width: 1.5),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: Colors.white,
-        elevation: 3,
-        height: 68,
-        indicatorColor: emerald.withOpacity(.12),
+        backgroundColor: surface,
+        indicatorColor: primary.withValues(alpha: .16),
         labelTextStyle: WidgetStatePropertyAll(
-          TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink),
+          TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: text),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

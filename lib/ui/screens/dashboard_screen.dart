@@ -18,6 +18,7 @@ import '../widgets/action_buttons_widget.dart';
 import '../widgets/pelanggan_picker_dialog.dart';
 import 'webview_screen.dart';
 import '../widgets/glass_components.dart';
+import '../widgets/theme_toggle_button.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onOpenWebView;
@@ -82,6 +83,7 @@ class DashboardScreenState extends State<DashboardScreen> {
                   MaterialPageRoute(builder: (_) => const SettingsScreen()),
                 ),
               ),
+              const ThemeToggleButton(),
               IconButton(
                 icon: const Icon(Icons.refresh),
                 tooltip: 'Refresh',

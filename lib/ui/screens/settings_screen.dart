@@ -8,6 +8,7 @@ import '../../services/mypertamina_api_service.dart';
 import '../widgets/glass_components.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/apple_background.dart';
+import '../widgets/theme_toggle_button.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -65,12 +66,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: const GlassAppBar(title: 'Pengaturan'),
+    appBar: const GlassAppBar(
+      title: 'Pengaturan',
+      actions: [ThemeToggleButton()],
+    ),
     body: AppleBackground(
       child: Consumer<AuthProvider>(
         builder: (_, auth, __) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            const Card(
+              child: ListTile(
+                leading: Icon(Icons.palette_outlined),
+                title: Text('Tema aplikasi'),
+                subtitle: Text('Beralih antara Light Mode dan Dark Mode'),
+                trailing: ThemeToggleButton(),
+              ),
+            ),
+            const SizedBox(height: 12),
             GlassCard(
               child: ListTile(
                 title: const Text('Profil Pangkalan'),

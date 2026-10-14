@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/transaction_queue_provider.dart';
+import 'providers/theme_provider.dart';
 import 'services/notification_service.dart';
 import 'ui/screens/dashboard_screen.dart';
 import 'ui/screens/pelanggan_screen.dart';
@@ -31,7 +32,14 @@ void main() async {
     debugPrint('Notification init error: $e');
   }
 
-  runApp(const PangkalanCerdasApp());
+  final themeProvider = ThemeProvider();
+  await themeProvider.load();
+  runApp(
+    ChangeNotifierProvider.value(
+      value: themeProvider,
+      child: const PangkalanCerdasApp(),
+    ),
+  );
 }
 
 class PangkalanCerdasApp extends StatelessWidget {
@@ -44,11 +52,15 @@ class PangkalanCerdasApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => TransactionQueueProvider()),
       ],
-      child: MaterialApp(
-        title: 'Pangkalan Cerdas LPG 3Kg',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        home: const MainNavigationScreen(),
+      child: Consumer<ThemeProvider>(
+        builder: (_, theme, __) => MaterialApp(
+          title: 'Pangkalan Cerdas LPG 3Kg',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: theme.themeMode,
+          home: const MainNavigationScreen(),
+        ),
       ),
     );
   }
