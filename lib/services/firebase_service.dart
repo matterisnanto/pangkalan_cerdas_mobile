@@ -90,6 +90,27 @@ class FirebaseService {
     return Pelanggan.fromJson(centralDoc.data()!, docId: centralDoc.id);
   }
 
+  Future<void> updatePelangganAfterTransaction({
+    required String registrationId,
+    required String nik,
+    required int daily,
+    required int monthly,
+    required DateTime lastTransactedAt,
+  }) async {
+    final data = {
+      'sisaKuotaHarian': daily,
+      'sisaKuotaBulanan': monthly,
+      'lastTransactedAt': Timestamp.fromDate(lastTransactedAt),
+    };
+    await _pelangganCol(
+      registrationId,
+    ).doc(nik).set(data, SetOptions(merge: true));
+    await _db
+        .collection('pelanggan')
+        .doc(nik)
+        .set(data, SetOptions(merge: true));
+  }
+
   Future<void> deletePelanggan(String registrationId, String nik) async {
     if (registrationId.isNotEmpty) {
       await _pelangganCol(registrationId).doc(nik).delete();

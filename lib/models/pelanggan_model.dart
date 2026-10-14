@@ -10,8 +10,9 @@ class Pelanggan {
   final DateTime? createdAt;
   // Transient for backwards compatibility only (never saved to Firestore)
   final String? registrationId;
-  final int? sisaKuotaHarian;
-  final int? sisaKuotaBulanan;
+  final int sisaKuotaHarian;
+  final int sisaKuotaBulanan;
+  final DateTime? lastTransactedAt;
   final int? sisaKuotaKeluarga;
   final String? encryptedFamilyId;
   final DateTime? lastSyncedAt;
@@ -25,8 +26,9 @@ class Pelanggan {
     this.alamat,
     this.createdAt,
     this.registrationId,
-    this.sisaKuotaHarian,
-    this.sisaKuotaBulanan,
+    this.sisaKuotaHarian = 0,
+    this.sisaKuotaBulanan = 0,
+    this.lastTransactedAt,
     this.sisaKuotaKeluarga,
     this.encryptedFamilyId,
     this.lastSyncedAt,
@@ -62,6 +64,12 @@ class Pelanggan {
     }
 
     DateTime? syncedAt;
+    final rawLastTransaction = json['lastTransactedAt'];
+    DateTime? lastTransactedAt = rawLastTransaction is Timestamp
+        ? rawLastTransaction.toDate()
+        : rawLastTransaction is String
+        ? DateTime.tryParse(rawLastTransaction)
+        : null;
     final rawSynced = json['lastSyncedAt'];
     if (rawSynced is Timestamp) syncedAt = rawSynced.toDate();
     if (rawSynced is String) syncedAt = DateTime.tryParse(rawSynced);
@@ -75,8 +83,9 @@ class Pelanggan {
       alamat: json['alamat'] as String?,
       createdAt: parsedCreatedAt,
       registrationId: json['registrationId'] as String?,
-      sisaKuotaHarian: (json['sisaKuotaHarian'] as num?)?.toInt(),
-      sisaKuotaBulanan: (json['sisaKuotaBulanan'] as num?)?.toInt(),
+      sisaKuotaHarian: (json['sisaKuotaHarian'] as num?)?.toInt() ?? 0,
+      sisaKuotaBulanan: (json['sisaKuotaBulanan'] as num?)?.toInt() ?? 0,
+      lastTransactedAt: lastTransactedAt,
       sisaKuotaKeluarga: (json['sisaKuotaKeluarga'] as num?)?.toInt(),
       encryptedFamilyId: json['encryptedFamilyId'] as String?,
       lastSyncedAt: syncedAt,
@@ -96,6 +105,9 @@ class Pelanggan {
           : FieldValue.serverTimestamp(),
       'sisaKuotaHarian': sisaKuotaHarian,
       'sisaKuotaBulanan': sisaKuotaBulanan,
+      'lastTransactedAt': lastTransactedAt == null
+          ? null
+          : Timestamp.fromDate(lastTransactedAt!),
       'sisaKuotaKeluarga': sisaKuotaKeluarga,
       'encryptedFamilyId': encryptedFamilyId,
       'lastSyncedAt': lastSyncedAt != null
@@ -114,6 +126,7 @@ class Pelanggan {
     DateTime? createdAt,
     int? sisaKuotaHarian,
     int? sisaKuotaBulanan,
+    DateTime? lastTransactedAt,
     int? sisaKuotaKeluarga,
     String? encryptedFamilyId,
     DateTime? lastSyncedAt,
@@ -128,6 +141,7 @@ class Pelanggan {
       createdAt: createdAt ?? this.createdAt,
       sisaKuotaHarian: sisaKuotaHarian ?? this.sisaKuotaHarian,
       sisaKuotaBulanan: sisaKuotaBulanan ?? this.sisaKuotaBulanan,
+      lastTransactedAt: lastTransactedAt ?? this.lastTransactedAt,
       sisaKuotaKeluarga: sisaKuotaKeluarga ?? this.sisaKuotaKeluarga,
       encryptedFamilyId: encryptedFamilyId ?? this.encryptedFamilyId,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,

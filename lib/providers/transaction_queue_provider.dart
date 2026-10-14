@@ -159,6 +159,13 @@ class TransactionQueueProvider extends ChangeNotifier {
         timestamp: DateTime.now(),
       );
       await _firebaseService.saveLogTransaksi(successLog);
+      await _firebaseService.updatePelangganAfterTransaction(
+        registrationId: _registrationId,
+        nik: pelanggan.nik,
+        daily: (pelanggan.sisaKuotaHarian - 1).clamp(0, 999999),
+        monthly: (pelanggan.sisaKuotaBulanan - 1).clamp(0, 999999),
+        lastTransactedAt: DateTime.now(),
+      );
       _results.add(successLog);
       _todayLogs.add(successLog);
     } on DioException catch (e) {
