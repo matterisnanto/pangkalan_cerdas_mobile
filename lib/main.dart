@@ -8,8 +8,8 @@ import 'services/notification_service.dart';
 import 'ui/screens/dashboard_screen.dart';
 import 'ui/screens/pelanggan_screen.dart';
 import 'ui/screens/webview_screen.dart';
-import 'ui/widgets/apple_background.dart';
 import 'ui/widgets/glass_components.dart';
+import 'ui/widgets/glass_card.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,13 +48,16 @@ class PangkalanCerdasApp extends StatelessWidget {
         title: 'Pangkalan Cerdas LPG 3Kg',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: const Color(0xFF0F172A),
-          colorScheme: const ColorScheme.dark(
-            primary: Color(0xFF06B6D4),
-            secondary: Color(0xFFA855F7),
-            surface: Color(0xFF1E1B4B),
+          brightness: Brightness.light,
+          scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF2563EB),
+            secondary: Color(0xFF10B981),
+            error: Color(0xFFDC2626),
+            surface: Colors.white,
+            onSurface: Color(0xFF0F172A),
           ),
+          fontFamily: 'Roboto',
           useMaterial3: true,
           navigationBarTheme: NavigationBarThemeData(
             backgroundColor: const Color(0xFF0F172A).withOpacity(0.95),
@@ -133,18 +136,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AppleBackground(
-        child: IndexedStack(
-          index: _currentIndex,
-          children: [
-            DashboardScreen(
-              key: _dashboardKey,
-              onOpenWebView: () => _onSelectTab(2),
-            ),
-            const PelangganScreen(),
-            WebViewScreen(onBackToDashboard: () => _onSelectTab(0)),
-          ],
-        ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          DashboardScreen(
+            key: _dashboardKey,
+            onOpenWebView: () => _onSelectTab(2),
+          ),
+          const PelangganScreen(),
+          WebViewScreen(onBackToDashboard: () => _onSelectTab(0)),
+        ],
       ),
       bottomNavigationBar: GlassBottomNavBar(
         selectedIndex: _currentIndex,

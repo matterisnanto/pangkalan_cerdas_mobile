@@ -2,6 +2,22 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'glass_card.dart';
 
+class MinimalAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final String title;
+  final List<Widget>? actions;
+  const MinimalAppBar({super.key, required this.title, this.actions});
+  @override
+  Size get preferredSize => const Size.fromHeight(64);
+  @override
+  Widget build(BuildContext context) => AppBar(
+    title: Text(title),
+    actions: actions,
+    elevation: 0,
+    scrolledUnderElevation: 0,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+  );
+}
+
 class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final List<Widget>? actions;
