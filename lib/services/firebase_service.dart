@@ -96,11 +96,14 @@ class FirebaseService {
     required int daily,
     required int monthly,
     required DateTime lastTransactedAt,
+    String? pangkalanName,
   }) async {
     final data = {
       'sisaKuotaHarian': daily,
       'sisaKuotaBulanan': monthly,
       'lastTransactedAt': Timestamp.fromDate(lastTransactedAt),
+      if (pangkalanName != null && pangkalanName.isNotEmpty)
+        'lastTransactionPangkalan': pangkalanName,
     };
     await _pelangganCol(
       registrationId,
@@ -109,6 +112,18 @@ class FirebaseService {
         .collection('pelanggan')
         .doc(nik)
         .set(data, SetOptions(merge: true));
+  }
+
+  Future<void> updatePangkalanAfterTransaction({
+    required String registrationId,
+    required int stockAvailable,
+    required int sold,
+  }) async {
+    await _db.collection('pangkalan').doc(registrationId).set({
+      'stockAvailable': stockAvailable.clamp(0, 999999),
+      'sold': sold,
+      'lastSyncAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<void> deletePelanggan(String registrationId, String nik) async {

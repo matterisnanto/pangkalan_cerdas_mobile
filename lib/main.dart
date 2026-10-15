@@ -6,7 +6,7 @@ import 'providers/auth_provider.dart';
 import 'providers/transaction_queue_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/notification_service.dart';
-import 'ui/screens/dashboard_screen.dart';
+import 'ui/screens/home_screen.dart';
 import 'ui/screens/pelanggan_screen.dart';
 import 'ui/screens/webview_screen.dart';
 import 'ui/widgets/glass_components.dart';
@@ -75,8 +75,6 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
-  final GlobalKey<DashboardScreenState> _dashboardKey =
-      GlobalKey<DashboardScreenState>();
 
   @override
   void initState() {
@@ -111,7 +109,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void _onSelectTab(int index) {
     setState(() => _currentIndex = index);
     if (index == 0) {
-      _dashboardKey.currentState?.loadLogs();
+      // Home queue refreshes from its Firebase-backed data source.
     }
   }
 
@@ -121,10 +119,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          DashboardScreen(
-            key: _dashboardKey,
-            onOpenWebView: () => _onSelectTab(2),
-          ),
+          HomeScreen(onOpenWebView: () => _onSelectTab(2)),
           const PelangganScreen(),
           WebViewScreen(onBackToDashboard: () => _onSelectTab(0)),
         ],

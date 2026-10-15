@@ -25,6 +25,9 @@ class TransactionQueueProvider extends ChangeNotifier {
   String? _lastError;
   bool _needsTokenRefresh = false;
   int _delaySeconds = 3;
+  String _pangkalanName = '';
+  int _stockAvailable = 0;
+  int _sold = 0;
 
   List<Pelanggan> get queue => _queue;
   List<LogTransaksi> get results => _results;
@@ -42,9 +45,15 @@ class TransactionQueueProvider extends ChangeNotifier {
     required ApiClient apiClient,
     required String registrationId,
     int delaySeconds = 3,
+    String pangkalanName = '',
+    int stockAvailable = 0,
+    int sold = 0,
   }) {
     _apiClient = apiClient;
     _registrationId = registrationId;
+    _pangkalanName = pangkalanName;
+    _stockAvailable = stockAvailable;
+    _sold = sold;
     _delaySeconds = delaySeconds.clamp(2, 5);
   }
 
@@ -164,6 +173,14 @@ class TransactionQueueProvider extends ChangeNotifier {
         daily: (pelanggan.sisaKuotaHarian - 1).clamp(0, 999999),
         monthly: (pelanggan.sisaKuotaBulanan - 1).clamp(0, 999999),
         lastTransactedAt: DateTime.now(),
+        pangkalanName: _pangkalanName,
+      );
+      _stockAvailable = (_stockAvailable - 1).clamp(0, 999999);
+      _sold += 1;
+      await _firebaseService.updatePangkalanAfterTransaction(
+        registrationId: _registrationId,
+        stockAvailable: _stockAvailable,
+        sold: _sold,
       );
       _results.add(successLog);
       _todayLogs.add(successLog);

@@ -13,6 +13,7 @@ class Pelanggan {
   final int sisaKuotaHarian;
   final int sisaKuotaBulanan;
   final DateTime? lastTransactedAt;
+  final String? lastTransactionPangkalan;
   final int? sisaKuotaKeluarga;
   final String? encryptedFamilyId;
   final DateTime? lastSyncedAt;
@@ -29,6 +30,7 @@ class Pelanggan {
     this.sisaKuotaHarian = 0,
     this.sisaKuotaBulanan = 0,
     this.lastTransactedAt,
+    this.lastTransactionPangkalan,
     this.sisaKuotaKeluarga,
     this.encryptedFamilyId,
     this.lastSyncedAt,
@@ -86,6 +88,9 @@ class Pelanggan {
       sisaKuotaHarian: (json['sisaKuotaHarian'] as num?)?.toInt() ?? 0,
       sisaKuotaBulanan: (json['sisaKuotaBulanan'] as num?)?.toInt() ?? 0,
       lastTransactedAt: lastTransactedAt,
+      lastTransactionPangkalan:
+          json['lastTransactionPangkalan'] as String? ??
+          json['lastPangkalanName'] as String?,
       sisaKuotaKeluarga: (json['sisaKuotaKeluarga'] as num?)?.toInt(),
       encryptedFamilyId: json['encryptedFamilyId'] as String?,
       lastSyncedAt: syncedAt,
@@ -108,6 +113,7 @@ class Pelanggan {
       'lastTransactedAt': lastTransactedAt == null
           ? null
           : Timestamp.fromDate(lastTransactedAt!),
+      'lastTransactionPangkalan': lastTransactionPangkalan,
       'sisaKuotaKeluarga': sisaKuotaKeluarga,
       'encryptedFamilyId': encryptedFamilyId,
       'lastSyncedAt': lastSyncedAt != null
@@ -127,6 +133,7 @@ class Pelanggan {
     int? sisaKuotaHarian,
     int? sisaKuotaBulanan,
     DateTime? lastTransactedAt,
+    String? lastTransactionPangkalan,
     int? sisaKuotaKeluarga,
     String? encryptedFamilyId,
     DateTime? lastSyncedAt,
@@ -142,6 +149,8 @@ class Pelanggan {
       sisaKuotaHarian: sisaKuotaHarian ?? this.sisaKuotaHarian,
       sisaKuotaBulanan: sisaKuotaBulanan ?? this.sisaKuotaBulanan,
       lastTransactedAt: lastTransactedAt ?? this.lastTransactedAt,
+      lastTransactionPangkalan:
+          lastTransactionPangkalan ?? this.lastTransactionPangkalan,
       sisaKuotaKeluarga: sisaKuotaKeluarga ?? this.sisaKuotaKeluarga,
       encryptedFamilyId: encryptedFamilyId ?? this.encryptedFamilyId,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
