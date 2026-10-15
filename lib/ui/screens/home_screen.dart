@@ -22,7 +22,18 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadQueue();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadQueue());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = context.read<AuthProvider>();
+    if (auth.isTokenValid && auth.stockAvailable == 0 && !auth.isStockLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.read<AuthProvider>().fetchProductAndStockFromApi();
+      });
+    }
   }
 
   Future<void> _loadQueue() async {
@@ -86,6 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
               stockRedeem: auth.isTokenValid ? auth.stockRedeem : 0,
               price: auth.isTokenValid ? auth.price : 0,
               expired: !auth.isTokenValid,
+              loading: auth.isStockLoading,
               onSync: auth.isTokenValid
                   ? () => auth.fetchProductAndStockFromApi()
                   : null,
@@ -249,7 +261,9 @@ class _StockCard extends StatelessWidget {
     required this.price,
     required this.expired,
     required this.onSync,
+    this.loading = false,
   });
+  final bool loading;
   @override
   Widget build(BuildContext context) => Card(
     child: Padding(
@@ -257,9 +271,21 @@ class _StockCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Stok Pangkalan (MyPertamina Sync)',
-            style: Theme.of(context).textTheme.titleMedium,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Stok Pangkalan (MyPertamina Sync)',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              if (loading)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(

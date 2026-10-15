@@ -17,6 +17,7 @@ class AuthProvider extends ChangeNotifier {
   String? _token;
   Pangkalan? _pangkalan;
   bool _isLoading = false;
+  bool _isStockLoading = false;
   bool _isTokenValid = false;
   String? _errorMessage;
   PangkalanProfileModel? _profile;
@@ -33,6 +34,7 @@ class AuthProvider extends ChangeNotifier {
   String? get token => _token;
   Pangkalan? get pangkalan => _pangkalan;
   bool get isLoading => _isLoading;
+  bool get isStockLoading => _isStockLoading;
   String? get errorMessage => _errorMessage;
   bool get isTokenAvailable => _token != null && _token!.isNotEmpty;
   bool get isTokenValid => _isTokenValid;
@@ -85,7 +87,10 @@ class AuthProvider extends ChangeNotifier {
   ApiClient get apiClient => _apiClient;
 
   Future<ProductStockModel?> fetchProductAndStockFromApi() async {
-    if (!_isTokenValid) return null;
+    if (!_isTokenValid || _isStockLoading) return null;
+    _isStockLoading = true;
+    _errorMessage = null;
+    notifyListeners();
     try {
       final product = await MyPertaminaApiService(
         _apiClient,
@@ -94,8 +99,10 @@ class AuthProvider extends ChangeNotifier {
       return product;
     } catch (e) {
       _errorMessage = e.toString();
-      notifyListeners();
       return null;
+    } finally {
+      _isStockLoading = false;
+      notifyListeners();
     }
   }
 
@@ -126,8 +133,12 @@ class AuthProvider extends ChangeNotifier {
 
   /// Called when WebView interceptor captures a Bearer token.
   Future<void> onTokenCaptured(String newToken) async {
-    await _storage.saveToken(newToken);
-    await checkTokenValidity();
+    final token = newToken.trim();
+    if (token.isEmpty) return;
+    await _storage.saveToken(token);
+    _token = token;
+    _isTokenValid = !_isJwtExpired(token);
+    notifyListeners();
     if (!_isTokenValid) return;
     await Future.wait([fetchUserProfile(), fetchProductAndStockFromApi()]);
   }
