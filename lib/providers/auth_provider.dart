@@ -20,6 +20,8 @@ class AuthProvider extends ChangeNotifier {
   bool _isTokenValid = false;
   String? _errorMessage;
   PangkalanProfileModel? _profile;
+  int _stockRedeem = 0;
+  num _price = 0;
   VoidCallback? onTokenExpired;
 
   AuthProvider() {
@@ -75,7 +77,34 @@ class AuthProvider extends ChangeNotifier {
   String get registrationId => _pangkalan?.registrationId ?? '';
   String get storeName => _pangkalan?.storeName ?? '';
   int get stockAvailable => _pangkalan?.stockAvailable ?? 0;
+  int get sold => _pangkalan?.sold ?? 0;
+  int get stockRedeem => _stockRedeem;
+  num get price => _price;
   ApiClient get apiClient => _apiClient;
+
+  Future<ProductStockModel?> fetchProductAndStockFromApi() async {
+    if (!_isTokenValid) return null;
+    try {
+      final product = await MyPertaminaApiService(
+        _apiClient,
+      ).fetchProductAndStockFromApi();
+      final current = _pangkalan;
+      if (current != null) {
+        current.stockAvailable = product.stockAvailable;
+        current.sold = product.sold;
+        _stockRedeem = product.stockRedeem;
+        _price = product.price;
+        current.lastSyncAt = DateTime.now();
+        await _firebaseService.savePangkalan(current);
+      }
+      notifyListeners();
+      return product;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
 
   Future<void> _loadSavedState() async {
     await checkTokenValidity();

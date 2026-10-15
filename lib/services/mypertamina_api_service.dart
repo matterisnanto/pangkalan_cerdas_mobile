@@ -12,6 +12,16 @@ class MyPertaminaApiService {
       unwrapJson((await client.dio.get(path, queryParameters: query)).data);
   Future<PangkalanProfileModel> fetchProfile() async =>
       PangkalanProfileModel.fromJson(await _get('/general/v1/users/profile'));
+
+  /// Fetch official LPG stock data using the active Bearer token.
+  Future<ProductStockModel> fetchProductAndStockFromApi() async {
+    final products = await fetchStock();
+    if (products.isEmpty) {
+      throw StateError('Data produk/stok MyPertamina kosong');
+    }
+    return products.first;
+  }
+
   Future<List<ProductStockModel>> fetchStock() async =>
       unwrapList(
             (await client.dio.get('/general/products/v1/products/user')).data,

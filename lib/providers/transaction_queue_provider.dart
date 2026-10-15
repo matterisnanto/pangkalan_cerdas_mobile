@@ -28,6 +28,7 @@ class TransactionQueueProvider extends ChangeNotifier {
   String _pangkalanName = '';
   int _stockAvailable = 0;
   int _sold = 0;
+  Future<void> Function()? _onQueueCompleted;
 
   List<Pelanggan> get queue => _queue;
   List<LogTransaksi> get results => _results;
@@ -48,12 +49,14 @@ class TransactionQueueProvider extends ChangeNotifier {
     String pangkalanName = '',
     int stockAvailable = 0,
     int sold = 0,
+    Future<void> Function()? onQueueCompleted,
   }) {
     _apiClient = apiClient;
     _registrationId = registrationId;
     _pangkalanName = pangkalanName;
     _stockAvailable = stockAvailable;
     _sold = sold;
+    _onQueueCompleted = onQueueCompleted;
     _delaySeconds = delaySeconds.clamp(2, 5);
   }
 
@@ -98,6 +101,11 @@ class TransactionQueueProvider extends ChangeNotifier {
 
     for (int i = _currentIndex; i < _queue.length; i++) {
       if (_status != QueueStatus.running) break;
+      if (_stockAvailable <= 0) {
+        _lastError = 'Stok MyPertamina habis. Antrean dihentikan.';
+        _status = QueueStatus.completed;
+        break;
+      }
       _currentIndex = i;
       notifyListeners();
       await _processTransaction(_queue[i]);
@@ -116,6 +124,7 @@ class TransactionQueueProvider extends ChangeNotifier {
     if (_status == QueueStatus.running) {
       _currentIndex = _queue.length;
       _status = QueueStatus.completed;
+      await _onQueueCompleted?.call();
     }
     notifyListeners();
   }

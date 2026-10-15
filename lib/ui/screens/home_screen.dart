@@ -27,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadQueue() async {
     final auth = context.read<AuthProvider>();
+    if (auth.isTokenValid) await auth.fetchProductAndStockFromApi();
     if (auth.registrationId.isEmpty) {
       setState(() => _loading = false);
       return;
@@ -46,7 +47,8 @@ class _HomeScreenState extends State<HomeScreen> {
       registrationId: auth.registrationId,
       pangkalanName: auth.storeName,
       stockAvailable: auth.stockAvailable,
-      sold: auth.pangkalan?.sold ?? 0,
+      sold: auth.sold,
+      onQueueCompleted: auth.fetchProductAndStockFromApi,
     );
     queue.setQueue(_entries.map((e) => e.pelanggan).toList());
   }
@@ -77,6 +79,17 @@ class _HomeScreenState extends State<HomeScreen> {
               _ProfileCard(profile: auth.profile!)
             else
               _LoginCard(onLogin: widget.onOpenWebView),
+            const SizedBox(height: 14),
+            _StockCard(
+              stockAvailable: auth.isTokenValid ? auth.stockAvailable : 0,
+              sold: auth.isTokenValid ? auth.sold : 0,
+              stockRedeem: auth.isTokenValid ? auth.stockRedeem : 0,
+              price: auth.isTokenValid ? auth.price : 0,
+              expired: !auth.isTokenValid,
+              onSync: auth.isTokenValid
+                  ? () => auth.fetchProductAndStockFromApi()
+                  : null,
+            ),
             const SizedBox(height: 14),
             _ControlCard(
               queue: queue,
@@ -219,6 +232,59 @@ class _TokenPill extends StatelessWidget {
       style: TextStyle(
         color: active ? Colors.green : Colors.red,
         fontWeight: FontWeight.bold,
+      ),
+    ),
+  );
+}
+
+class _StockCard extends StatelessWidget {
+  final int stockAvailable, sold, stockRedeem;
+  final num price;
+  final bool expired;
+  final VoidCallback? onSync;
+  const _StockCard({
+    required this.stockAvailable,
+    required this.sold,
+    required this.stockRedeem,
+    required this.price,
+    required this.expired,
+    required this.onSync,
+  });
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Stok Pangkalan (MyPertamina Sync)',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$stockAvailable Tabung${expired ? ' (Sesi Habis)' : ''}',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 16,
+            runSpacing: 4,
+            children: [
+              Text('Total Terjual: $sold'),
+              Text('Kuota Penebusan: $stockRedeem'),
+              Text('Harga: Rp ${price.toStringAsFixed(0)}'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: onSync,
+            icon: const Icon(Icons.sync),
+            label: const Text('Sinkronkan Stok API'),
+          ),
+        ],
       ),
     ),
   );
