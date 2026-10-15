@@ -122,7 +122,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         index: _currentIndex,
         children: [
           WebViewScreen(onBackToDashboard: () => _onSelectTab(3)),
-          const TransaksiScreen(),
+          TransaksiScreen(onOpenWebView: () => _onSelectTab(0)),
           const PelangganScreen(),
           DashboardScreen(onOpenWebView: () => _onSelectTab(0)),
           const SettingsScreen(),

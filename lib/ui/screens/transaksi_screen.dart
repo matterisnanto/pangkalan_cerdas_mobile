@@ -1,13 +1,16 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/log_transaksi.dart';
+import '../../models/mypertamina_models.dart';
 import '../../models/pelanggan_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firebase_service.dart';
 import '../../services/mypertamina_api_service.dart';
 
 class TransaksiScreen extends StatefulWidget {
-  const TransaksiScreen({super.key});
+  final VoidCallback? onOpenWebView;
+  const TransaksiScreen({super.key, this.onOpenWebView});
   @override
   State<TransaksiScreen> createState() => _TransaksiScreenState();
 }
@@ -17,6 +20,8 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
   List<LogTransaksi> _logs = [];
   List<Pelanggan> _customers = [];
   bool _loading = true;
+  bool _tokenExpired = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -26,23 +31,69 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
 
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
-    if (auth.registrationId.isEmpty) return;
-    setState(() => _loading = true);
+    if (auth.registrationId.isEmpty) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+      _tokenExpired = false;
+    });
     try {
-      final values = await Future.wait([
-        _firebase.getAllLogTransaksi(auth.registrationId),
-        _firebase.getAllPelanggan(auth.registrationId),
-      ]);
-      if (mounted) {
-        setState(() {
-          _logs = values[0] as List<LogTransaksi>;
-          _customers = values[1] as List<Pelanggan>;
-        });
+      final logsFuture = _firebase.getAllLogTransaksi(auth.registrationId);
+      final customersFuture = _firebase.getAllPelanggan(auth.registrationId);
+      List<LogTransaksi> logs = [];
+      List<Pelanggan> customers = [];
+      try {
+        logs = await logsFuture;
+      } catch (e) {
+        _errorMessage = 'Riwayat lokal gagal dimuat: $e';
       }
+      try {
+        customers = await customersFuture;
+      } catch (e) {
+        _errorMessage ??= 'Data pelanggan gagal dimuat: $e';
+      }
+      try {
+        final report = await MyPertaminaApiService(
+          auth.apiClient,
+        ).fetchReport();
+        logs = [...logs, ...report.map(_reportToLog)];
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 401) {
+          _tokenExpired = true;
+        } else {
+          _errorMessage ??= 'Laporan MyPertamina gagal dimuat.';
+        }
+      } catch (e) {
+        _errorMessage ??= 'Laporan MyPertamina gagal dimuat: $e';
+      }
+      if (mounted)
+        setState(() {
+          _logs = logs;
+          _customers = customers;
+        });
+    } catch (e) {
+      if (mounted) setState(() => _errorMessage = 'Gagal memuat transaksi: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  LogTransaksi _reportToLog(TransactionReceiptModel report) => LogTransaksi(
+    id: report.transactionId,
+    nik: report.nik,
+    nama: report.customerName,
+    kategori: report.category,
+    jumlahTabung: report.quantity,
+    status: report.status.isEmpty ? 'BERHASIL' : report.status,
+    refNo: report.transactionUniqueKey.isEmpty
+        ? null
+        : report.transactionUniqueKey,
+    registrationId: context.read<AuthProvider>().registrationId,
+    timestamp: DateTime.tryParse(report.createdAt) ?? DateTime.now(),
+  );
 
   Future<void> _syncQuota(Pelanggan customer) async {
     final auth = context.read<AuthProvider>();
@@ -128,6 +179,27 @@ class _TransaksiScreenState extends State<TransaksiScreen> {
       const SizedBox(height: 20),
       Text('Riwayat Transaksi', style: Theme.of(context).textTheme.titleLarge),
       const SizedBox(height: 8),
+      if (_tokenExpired)
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.lock_clock),
+            title: const Text('Sesi token berakhir'),
+            subtitle: const Text(
+              'Login ulang untuk memuat laporan MyPertamina.',
+            ),
+            trailing: FilledButton(
+              onPressed: widget.onOpenWebView,
+              child: const Text('Login Ulang via WebView'),
+            ),
+          ),
+        ),
+      if (_errorMessage != null)
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.error_outline),
+            title: Text(_errorMessage!),
+          ),
+        ),
       if (_logs.isEmpty)
         const Card(child: ListTile(title: Text('Belum ada riwayat transaksi'))),
       ..._logs.map(_logTile),

@@ -115,27 +115,33 @@ class MyPertaminaApiService {
     )).data,
   );
 
-  Future<List<TransactionReceiptModel>> fetchReport(
-    String startDate,
-    String endDate,
-  ) async =>
-      unwrapList(
-            (await client.dio.get(
-              '/general/v3/transactions/report',
-              queryParameters: {
-                'search': '',
-                'startDate': startDate,
-                'endDate': endDate,
-                'sort': 'latest',
-              },
-            )).data,
-          )
-          .whereType<Map>()
-          .map(
-            (e) =>
-                TransactionReceiptModel.fromJson(Map<String, dynamic>.from(e)),
-          )
-          .toList();
+  Future<List<TransactionReceiptModel>> fetchReport({
+    String? startDate,
+    String? endDate,
+  }) async {
+    final now = DateTime.now();
+    final start = startDate ?? _formatDate(DateTime(now.year, now.month, 1));
+    final end = endDate ?? _formatDate(now);
+    final response = await client.dio.get(
+      '$baseUrl/general/v3/transactions/report',
+      queryParameters: {
+        'search': '',
+        'sort': 'latest',
+        'startDate': start,
+        'endDate': end,
+      },
+    );
+    return unwrapList(response.data)
+        .whereType<Map>()
+        .map(
+          (e) => TransactionReceiptModel.fromJson(Map<String, dynamic>.from(e)),
+        )
+        .toList();
+  }
+
+  static String _formatDate(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
   Future<Map<String, dynamic>> fetchSummary(
     String startDate,
     String endDate,
