@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/pangkalan.dart';
@@ -19,7 +21,7 @@ class AuthProvider extends ChangeNotifier {
   VoidCallback? onTokenExpired;
 
   AuthProvider() {
-    _apiClient = ApiClient(_storage, onTokenExpired: _handleTokenExpired);
+    _apiClient = ApiClient(_storage, onTokenExpired: clearSession);
     _loadSavedState();
   }
 
@@ -30,11 +32,40 @@ class AuthProvider extends ChangeNotifier {
   bool get isTokenAvailable => _token != null && _token!.isNotEmpty;
   bool get isTokenValid => _isTokenValid;
 
-  void _handleTokenExpired() {
+  Future<void> clearSession() async {
     _token = null;
+    _pangkalan = null;
     _isTokenValid = false;
+    await _storage.clearSession();
     notifyListeners();
     onTokenExpired?.call();
+  }
+
+  bool _isJwtExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      final normalized = base64Url.normalize(parts[1]);
+      final payload = jsonDecode(utf8.decode(base64Url.decode(normalized)));
+      final exp = payload is Map
+          ? int.tryParse(payload['exp'].toString())
+          : null;
+      return exp == null ||
+          DateTime.now().millisecondsSinceEpoch ~/ 1000 >= exp;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<void> checkTokenValidity() async {
+    final token = await _storage.getToken();
+    if (token == null || token.isEmpty || _isJwtExpired(token)) {
+      await clearSession();
+      return;
+    }
+    _token = token;
+    _isTokenValid = true;
+    notifyListeners();
   }
 
   String get registrationId => _pangkalan?.registrationId ?? '';
@@ -43,7 +74,8 @@ class AuthProvider extends ChangeNotifier {
   ApiClient get apiClient => _apiClient;
 
   Future<void> _loadSavedState() async {
-    _token = await _storage.getToken();
+    await checkTokenValidity();
+    if (!_isTokenValid) return;
     final regId = await _storage.getRegistrationId();
     if (regId != null && regId.isNotEmpty) {
       _pangkalan = await _firebaseService.getPangkalan(regId);
@@ -53,10 +85,9 @@ class AuthProvider extends ChangeNotifier {
 
   /// Called when WebView interceptor captures a Bearer token
   Future<void> onTokenCaptured(String newToken) async {
-    _token = newToken;
-    _isTokenValid = true;
     await _storage.saveToken(newToken);
-    notifyListeners();
+    await checkTokenValidity();
+    if (!_isTokenValid) return;
     await fetchUserProfile();
   }
 

@@ -58,10 +58,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          auth.storeName.isEmpty ? 'Pangkalan Cerdas' : auth.storeName,
+          auth.isTokenValid && auth.storeName.isNotEmpty
+              ? 'Pangkalan ${auth.storeName}'
+              : 'Belum Login - Buka WebView',
         ),
         actions: [
-          _TokenPill(active: auth.isTokenValid || auth.isTokenAvailable),
+          _TokenPill(active: auth.isTokenValid),
           const ThemeToggleButton(),
         ],
       ),

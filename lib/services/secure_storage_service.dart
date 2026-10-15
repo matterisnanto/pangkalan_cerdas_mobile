@@ -62,6 +62,14 @@ class SecureStorageService {
     'name': await _storage.read(key: '${_profilePrefix}${index}_name') ?? '',
   };
 
+  Future<void> clearSession() async {
+    await Future.wait([
+      deleteToken(),
+      _storage.delete(key: _registrationIdKey),
+      _storage.delete(key: _storeNameKey),
+    ]);
+  }
+
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }
