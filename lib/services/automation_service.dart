@@ -27,28 +27,28 @@ class AutomationService {
     if (targetStock <= 0 || registrationId.isEmpty)
       return const SmartQueueResult([]);
     final customers = await firebase.getAllPelanggan(registrationId);
-    final now = DateTime.now();
-    final aman = <Pelanggan>[];
-    final kepepet = <Pelanggan>[];
+    final today = DateTime.now();
+    final startToday = DateTime(today.year, today.month, today.day);
+    final eligible = <Pelanggan>[];
     for (final customer in customers) {
-      if (customer.sisaKuotaHarian <= 0 || customer.sisaKuotaBulanan <= 0)
+      if (customer.sisaKuotaHarian <= 0 || customer.sisaKuotaBulanan <= 0) {
         continue;
+      }
       final last = customer.lastTransactedAt;
-      final days = last == null
-          ? null
-          : DateTime(
-              now.year,
-              now.month,
-              now.day,
-            ).difference(DateTime(last.year, last.month, last.day)).inDays;
-      (days == null || days >= 2 ? aman : kepepet).add(customer);
+      final samePangkalan = customer.lastTransactionPangkalan == registrationId;
+      if (samePangkalan && last != null) {
+        final days = startToday
+            .difference(DateTime(last.year, last.month, last.day))
+            .inDays;
+        if (days < 2) continue;
+      }
+      eligible.add(customer);
     }
+    eligible.sort((a, b) => a.sisaKuotaHarian.compareTo(b.sisaKuotaHarian));
     final selected = <SmartQueueEntry>[];
-    for (final customer in [...aman, ...kepepet]) {
+    for (final customer in eligible) {
       if (selected.length >= targetStock) break;
-      selected.add(
-        SmartQueueEntry(pelanggan: customer, aman: aman.contains(customer)),
-      );
+      selected.add(SmartQueueEntry(pelanggan: customer, aman: true));
     }
     return SmartQueueResult(selected);
   }

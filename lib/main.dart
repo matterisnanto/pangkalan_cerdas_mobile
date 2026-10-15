@@ -6,9 +6,11 @@ import 'providers/auth_provider.dart';
 import 'providers/transaction_queue_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/notification_service.dart';
-import 'ui/screens/home_screen.dart';
 import 'ui/screens/pelanggan_screen.dart';
 import 'ui/screens/webview_screen.dart';
+import 'ui/screens/transaksi_screen.dart';
+import 'ui/screens/dashboard_screen.dart';
+import 'ui/screens/settings_screen.dart';
 import 'ui/widgets/glass_components.dart';
 import 'ui/theme/app_theme.dart';
 
@@ -119,9 +121,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          HomeScreen(onOpenWebView: () => _onSelectTab(2)),
+          WebViewScreen(onBackToDashboard: () => _onSelectTab(3)),
+          const TransaksiScreen(),
           const PelangganScreen(),
-          WebViewScreen(onBackToDashboard: () => _onSelectTab(0)),
+          DashboardScreen(onOpenWebView: () => _onSelectTab(0)),
+          const SettingsScreen(),
         ],
       ),
       bottomNavigationBar: GlassBottomNavBar(

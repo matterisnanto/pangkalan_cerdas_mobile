@@ -128,9 +128,14 @@ class GlassBottomNavBar extends StatelessWidget {
         indicatorColor: const Color(0xFF34D399).withOpacity(.2),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.space_dashboard_outlined),
-            selectedIcon: Icon(Icons.space_dashboard),
-            label: 'Home',
+            icon: Icon(Icons.language_outlined),
+            selectedIcon: Icon(Icons.language),
+            label: 'Portal',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long),
+            label: 'Transaksi',
           ),
           NavigationDestination(
             icon: Icon(Icons.people_outline),
@@ -138,9 +143,14 @@ class GlassBottomNavBar extends StatelessWidget {
             label: 'Pelanggan',
           ),
           NavigationDestination(
-            icon: Icon(Icons.language_outlined),
-            selectedIcon: Icon(Icons.language),
-            label: 'Portal',
+            icon: Icon(Icons.analytics_outlined),
+            selectedIcon: Icon(Icons.analytics),
+            label: 'Dashboard',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Pengaturan',
           ),
         ],
       ),

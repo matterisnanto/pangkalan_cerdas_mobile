@@ -74,7 +74,7 @@ class _WebViewScreenState extends State<WebViewScreen>
             child: InAppWebView(
               initialUrlRequest: URLRequest(
                 url: WebUri(
-                  'https://subsiditepatlpg.mypertamina.id/merchant-login',
+                  'https://subsiditepatlpg.mypertamina.id/',
                 ),
               ),
               initialUserScripts: UnmodifiableListView<UserScript>([
