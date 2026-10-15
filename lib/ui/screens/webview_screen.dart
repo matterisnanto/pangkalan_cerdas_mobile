@@ -4,7 +4,6 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firebase_service.dart';
-import '../../services/secure_storage_service.dart';
 import '../widgets/theme_toggle_button.dart';
 
 class WebViewScreen extends StatefulWidget {
@@ -28,8 +27,6 @@ class _WebViewScreenState extends State<WebViewScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
     return Scaffold(
       appBar: AppBar(
         leading: widget.onBackToDashboard != null
@@ -107,15 +104,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                     if (args.isEmpty || args.first is! String) return;
                     final token = (args.first as String).trim();
                     if (token.isEmpty) return;
-                    await SecureStorageService().saveToken(token);
-                    if (!mounted) return;
-                    setState(() => _tokenCaptured = true);
-                    context.read<AuthProvider>().onTokenCaptured(token);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Token Bearer berhasil disimpan.'),
-                      ),
-                    );
+                    await _handleTokenCaptured(token);
                   },
                 );
                 controller.addJavaScriptHandler(
@@ -151,7 +140,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                 });
               },
               shouldInterceptRequest: (controller, request) async {
-                _extractToken(request.headers, authProvider);
+                _extractToken(request.headers);
                 return null;
               },
               onLoadResource: (controller, resource) {
@@ -217,7 +206,22 @@ class _WebViewScreenState extends State<WebViewScreen>
 })();
 ''';
 
-  void _extractToken(Map<String, String>? headers, AuthProvider authProvider) {
+  Future<void> _handleTokenCaptured(String token) async {
+    if (_tokenCaptured) return;
+    final auth = context.read<AuthProvider>();
+    await auth.onTokenCaptured(token);
+    if (!mounted) return;
+    setState(() => _tokenCaptured = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Login Berhasil - Stok Pangkalan Diperbarui'),
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    if (mounted) widget.onBackToDashboard?.call();
+  }
+
+  void _extractToken(Map<String, String>? headers) {
     if (headers == null || _tokenCaptured) return;
 
     for (final entry in headers.entries) {
@@ -225,8 +229,7 @@ class _WebViewScreenState extends State<WebViewScreen>
           entry.value.startsWith('Bearer ')) {
         final token = entry.value.substring(7).trim();
         if (token.isNotEmpty) {
-          setState(() => _tokenCaptured = true);
-          authProvider.onTokenCaptured(token);
+          _handleTokenCaptured(token);
           break;
         }
       }

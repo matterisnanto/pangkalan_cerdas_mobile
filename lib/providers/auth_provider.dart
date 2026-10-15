@@ -22,6 +22,7 @@ class AuthProvider extends ChangeNotifier {
   PangkalanProfileModel? _profile;
   int _stockRedeem = 0;
   num _price = 0;
+  ProductStockModel? _latestProductStock;
   VoidCallback? onTokenExpired;
 
   AuthProvider() {
@@ -80,6 +81,7 @@ class AuthProvider extends ChangeNotifier {
   int get sold => _pangkalan?.sold ?? 0;
   int get stockRedeem => _stockRedeem;
   num get price => _price;
+  ProductStockModel? get latestProductStock => _latestProductStock;
   ApiClient get apiClient => _apiClient;
 
   Future<ProductStockModel?> fetchProductAndStockFromApi() async {
@@ -88,22 +90,27 @@ class AuthProvider extends ChangeNotifier {
       final product = await MyPertaminaApiService(
         _apiClient,
       ).fetchProductAndStockFromApi();
-      final current = _pangkalan;
-      if (current != null) {
-        current.stockAvailable = product.stockAvailable;
-        current.sold = product.sold;
-        _stockRedeem = product.stockRedeem;
-        _price = product.price;
-        current.lastSyncAt = DateTime.now();
-        await _firebaseService.savePangkalan(current);
-      }
-      notifyListeners();
+      await applyProductStock(product);
       return product;
     } catch (e) {
       _errorMessage = e.toString();
       notifyListeners();
       return null;
     }
+  }
+
+  Future<void> applyProductStock(ProductStockModel product) async {
+    final current = _pangkalan;
+    _latestProductStock = product;
+    _stockRedeem = product.stockRedeem;
+    _price = product.price;
+    if (current != null) {
+      current.stockAvailable = product.stockAvailable;
+      current.sold = product.sold;
+      current.lastSyncAt = DateTime.now();
+      await _firebaseService.savePangkalan(current);
+    }
+    notifyListeners();
   }
 
   Future<void> _loadSavedState() async {
@@ -117,12 +124,12 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Called when WebView interceptor captures a Bearer token
+  /// Called when WebView interceptor captures a Bearer token.
   Future<void> onTokenCaptured(String newToken) async {
     await _storage.saveToken(newToken);
     await checkTokenValidity();
     if (!_isTokenValid) return;
-    await fetchUserProfile();
+    await Future.wait([fetchUserProfile(), fetchProductAndStockFromApi()]);
   }
 
   /// Fetch user profile from MyPertamina API
@@ -143,8 +150,11 @@ class AuthProvider extends ChangeNotifier {
       final regId = data.registrationId;
       final name = data.storeName;
       // Profile endpoint is the authority for active scope; stock syncs separately.
-      const stock = 0;
-      const soldCount = 0;
+      final stock =
+          _pangkalan?.stockAvailable ??
+          _latestProductStock?.stockAvailable ??
+          0;
+      final soldCount = _pangkalan?.sold ?? _latestProductStock?.sold ?? 0;
 
       if (regId.isEmpty) {
         _errorMessage = 'registrationId tidak ditemukan dalam respon API';
