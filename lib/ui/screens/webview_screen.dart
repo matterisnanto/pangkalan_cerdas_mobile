@@ -30,84 +30,93 @@ class _WebViewScreenState extends State<WebViewScreen>
       body: Stack(
         children: [
           Positioned.fill(
-            child: InAppWebView(
-              initialUrlRequest: URLRequest(
-                url: WebUri('https://subsiditepatlpg.mypertamina.id/'),
-              ),
-              initialUserScripts: UnmodifiableListView<UserScript>([
-                UserScript(
-                  source: _tokenInterceptorScript,
-                  injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
-                  forMainFrameOnly: false,
+            child: SafeArea(
+              top: true,
+              bottom: false,
+              child: InAppWebView(
+                initialUrlRequest: URLRequest(
+                  url: WebUri('https://subsiditepatlpg.mypertamina.id/'),
                 ),
-              ]),
-              initialSettings: InAppWebViewSettings(
-                javaScriptEnabled: true,
-                domStorageEnabled: true,
-                clearCache: false,
-                cacheEnabled: true,
-                sharedCookiesEnabled: true,
-                useShouldInterceptRequest: true,
-                useOnLoadResource: true,
-                mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-                userAgent:
-                    'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-              ),
-              onWebViewCreated: (controller) {
-                _controller = controller;
-                controller.addJavaScriptHandler(
-                  handlerName: 'onTokenCaptured',
-                  callback: (args) async {
-                    if (args.isEmpty || args.first is! String) return;
-                    final token = (args.first as String).trim();
-                    if (token.isEmpty) return;
-                    await _handleTokenCaptured(token);
-                  },
-                );
-                controller.addJavaScriptHandler(
-                  handlerName: 'myPertaminaTransaction',
-                  callback: (args) async {
-                    if (args.isEmpty || args.first is! Map) return;
-                    final auth = context.read<AuthProvider>();
-                    await FirebaseService().saveInterceptedTransaction(
-                      registrationId: auth.registrationId,
-                      payload: Map<String, dynamic>.from(args.first as Map),
-                    );
-                  },
-                );
-              },
-              onLoadStop: (controller, url) async {
-                await controller.evaluateJavascript(
-                  source: _transactionBridgeScript,
-                );
-                if (url.toString() ==
-                        'https://subsiditepatlpg.mypertamina.id/' ||
-                    url.toString() ==
-                        'https://subsiditepatlpg.mypertamina.id') {
+                initialUserScripts: UnmodifiableListView<UserScript>([
+                  UserScript(
+                    source: _tokenInterceptorScript,
+                    injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+                    forMainFrameOnly: false,
+                  ),
+                ]),
+                initialSettings: InAppWebViewSettings(
+                  javaScriptEnabled: true,
+                  domStorageEnabled: true,
+                  clearCache: false,
+                  cacheEnabled: true,
+                  sharedCookiesEnabled: true,
+                  useShouldInterceptRequest: true,
+                  useOnLoadResource: true,
+                  mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+                  userAgent:
+                      'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+                ),
+                onWebViewCreated: (controller) {
+                  _controller = controller;
+                  controller.addJavaScriptHandler(
+                    handlerName: 'onTokenCaptured',
+                    callback: (args) async {
+                      if (args.isEmpty || args.first is! String) return;
+                      final token = (args.first as String).trim();
+                      if (token.isEmpty) return;
+                      await _handleTokenCaptured(token);
+                    },
+                  );
+                  controller.addJavaScriptHandler(
+                    handlerName: 'myPertaminaTransaction',
+                    callback: (args) async {
+                      if (args.isEmpty || args.first is! Map) return;
+                      final auth = context.read<AuthProvider>();
+                      await FirebaseService().saveInterceptedTransaction(
+                        registrationId: auth.registrationId,
+                        payload: Map<String, dynamic>.from(args.first as Map),
+                      );
+                    },
+                  );
+                },
+                onLoadStop: (controller, url) async {
+                  await controller.evaluateJavascript(
+                    source: _transactionBridgeScript,
+                  );
                   await controller.evaluateJavascript(
                     source:
-                        "if(window.location.pathname !== '/merchant-login') { window.location.href = '/merchant-login'; }",
+                        "document.documentElement.style.paddingBottom = '120px';",
                   );
-                }
-              },
-              onProgressChanged: (controller, progress) {
-                setState(() {
-                  _loadProgress = progress.toDouble();
-                  _isLoading = progress < 100;
-                });
-              },
-              shouldInterceptRequest: (controller, request) async {
-                _extractToken(request.headers);
-                return null;
-              },
-              onLoadResource: (controller, resource) {
-                // Fallback token capture from load resource
-              },
-              onReceivedServerTrustAuthRequest: (controller, challenge) async {
-                return ServerTrustAuthResponse(
-                  action: ServerTrustAuthResponseAction.PROCEED,
-                );
-              },
+                  if (url.toString() ==
+                          'https://subsiditepatlpg.mypertamina.id/' ||
+                      url.toString() ==
+                          'https://subsiditepatlpg.mypertamina.id') {
+                    await controller.evaluateJavascript(
+                      source:
+                          "if(window.location.pathname !== '/merchant-login') { window.location.href = '/merchant-login'; }",
+                    );
+                  }
+                },
+                onProgressChanged: (controller, progress) {
+                  setState(() {
+                    _loadProgress = progress.toDouble();
+                    _isLoading = progress < 100;
+                  });
+                },
+                shouldInterceptRequest: (controller, request) async {
+                  _extractToken(request.headers);
+                  return null;
+                },
+                onLoadResource: (controller, resource) {
+                  // Fallback token capture from load resource
+                },
+                onReceivedServerTrustAuthRequest:
+                    (controller, challenge) async {
+                      return ServerTrustAuthResponse(
+                        action: ServerTrustAuthResponseAction.PROCEED,
+                      );
+                    },
+              ),
             ),
           ),
           Positioned(
