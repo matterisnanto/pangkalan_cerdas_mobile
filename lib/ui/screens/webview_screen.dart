@@ -4,7 +4,6 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firebase_service.dart';
-import '../widgets/theme_toggle_button.dart';
 
 class WebViewScreen extends StatefulWidget {
   final VoidCallback? onBackToDashboard;
@@ -28,54 +27,12 @@ class _WebViewScreenState extends State<WebViewScreen>
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
-      appBar: AppBar(
-        leading: widget.onBackToDashboard != null
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: widget.onBackToDashboard,
-              )
-            : null,
-        title: const Text('Portal MyPertamina'),
-        backgroundColor: Colors.blue.shade800,
-        foregroundColor: Colors.white,
-        actions: [
-          if (_tokenCaptured)
-            const Padding(
-              padding: EdgeInsets.only(right: 8),
-              child: Icon(Icons.check_circle, color: Colors.greenAccent),
-            ),
-          const ThemeToggleButton(),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => _controller?.reload(),
-          ),
-        ],
-      ),
-      body: Column(
+      body: Stack(
         children: [
-          if (_isLoading)
-            LinearProgressIndicator(
-              value: _loadProgress / 100,
-              backgroundColor: Colors.grey.shade300,
-              color: Colors.blue.shade800,
-            ),
-          if (_tokenCaptured)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-              color: Colors.green.shade700,
-              child: const Text(
-                'Token Bearer berhasil ditangkap!',
-                style: TextStyle(color: Colors.white, fontSize: 13),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          Expanded(
+          Positioned.fill(
             child: InAppWebView(
               initialUrlRequest: URLRequest(
-                url: WebUri(
-                  'https://subsiditepatlpg.mypertamina.id/',
-                ),
+                url: WebUri('https://subsiditepatlpg.mypertamina.id/'),
               ),
               initialUserScripts: UnmodifiableListView<UserScript>([
                 UserScript(
@@ -151,6 +108,69 @@ class _WebViewScreenState extends State<WebViewScreen>
                   action: ServerTrustAuthResponseAction.PROCEED,
                 );
               },
+            ),
+          ),
+          Positioned(
+            top: 8,
+            left: 8,
+            right: 8,
+            child: SafeArea(
+              bottom: false,
+              child: Align(
+                alignment: Alignment.topRight,
+                child: Material(
+                  color: Colors.black.withValues(alpha: .58),
+                  borderRadius: BorderRadius.circular(20),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => _controller?.reload(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _tokenCaptured
+                                ? Icons.verified
+                                : Icons.vpn_key_outlined,
+                            color: _tokenCaptured
+                                ? Colors.greenAccent
+                                : Colors.white70,
+                            size: 15,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            _tokenCaptured
+                                ? 'Token aktif'
+                                : (_isLoading
+                                      ? 'Memuat portal'
+                                      : 'Login portal'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (_isLoading) ...[
+                            const SizedBox(width: 6),
+                            SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                value: _loadProgress / 100,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],

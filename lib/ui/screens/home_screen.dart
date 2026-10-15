@@ -5,7 +5,6 @@ import '../../models/mypertamina_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/transaction_queue_provider.dart';
 import '../../services/automation_service.dart';
-import '../widgets/theme_toggle_button.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onOpenWebView;
@@ -76,10 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ? 'Pangkalan ${auth.storeName}'
               : 'Belum Login - Buka WebView',
         ),
-        actions: [
-          _TokenPill(active: auth.isTokenValid),
-          const ThemeToggleButton(),
-        ],
+        actions: [_TokenPill(active: auth.isTokenValid)],
       ),
       body: RefreshIndicator(
         onRefresh: _loadQueue,

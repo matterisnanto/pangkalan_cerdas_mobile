@@ -66,10 +66,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: const GlassAppBar(
-      title: 'Pengaturan',
-      actions: [ThemeToggleButton()],
-    ),
+    appBar: const GlassAppBar(title: 'Pengaturan'),
     body: AppleBackground(
       child: Consumer<AuthProvider>(
         builder: (_, auth, __) => ListView(
