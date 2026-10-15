@@ -3,10 +3,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/pelanggan.dart';
 import '../models/log_transaksi.dart';
+import '../models/mypertamina_models.dart';
 import '../services/api_client.dart';
 import '../services/firebase_service.dart';
 import '../services/quota_rule_engine.dart';
 import '../services/notification_service.dart';
+import '../services/mypertamina_api_service.dart';
 
 enum QueueStatus { idle, running, paused, tokenExpired, completed }
 
@@ -158,7 +160,30 @@ class TransactionQueueProvider extends ChangeNotifier {
 
     try {
       final response = await _callVerifyWithRetry(pelanggan.nik);
-      final data = response.data;
+      final verification = CustomerVerificationModel.fromJson(
+        unwrapJson(response.data),
+      );
+      final familyId = pelanggan.encryptedFamilyId?.isNotEmpty == true
+          ? pelanggan.encryptedFamilyId!
+          : verification.familyIdEncrypted.isNotEmpty
+          ? verification.familyIdEncrypted
+          : verification.familyId;
+      final token = verification.token;
+      if (familyId.isEmpty || token.isEmpty) {
+        throw StateError('Data transaksi NIK ${pelanggan.nik} tidak lengkap');
+      }
+      final transaction = await MyPertaminaApiService(_apiClient!)
+          .submitTransactionV3(
+            TransactionSubmission(
+              token: token,
+              nationalityId: pelanggan.nik,
+              familyIdEncrypted: familyId,
+              category: pelanggan.kategori,
+              name: pelanggan.nama,
+              coordinate: '0,0',
+            ),
+          );
+      final data = transaction.data;
       final refNo = data is Map<String, dynamic>
           ? (data['data']?['refNo']?.toString() ??
                 data['refNo']?.toString() ??

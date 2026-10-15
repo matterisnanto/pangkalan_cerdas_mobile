@@ -1,5 +1,40 @@
+import 'package:dio/dio.dart';
 import '../models/mypertamina_models.dart';
 import 'api_client.dart';
+
+class TransactionSubmission {
+  final String quantity;
+  final String token;
+  final String nationalityId;
+  final String familyIdEncrypted;
+  final String category;
+  final String name;
+  final String channelInject;
+  final String coordinate;
+
+  const TransactionSubmission({
+    this.quantity = '1',
+    required this.token,
+    required this.nationalityId,
+    required this.familyIdEncrypted,
+    required this.category,
+    required this.name,
+    this.channelInject = 'MOBILE',
+    required this.coordinate,
+  });
+
+  FormData toFormData() => FormData.fromMap({
+    'quantity': quantity,
+    'token': token,
+    'nationalityId': nationalityId,
+    'familyIdEncrypted': familyIdEncrypted,
+    'category': category,
+    'sourceTypeId': '1',
+    'name': name,
+    'channelInject': channelInject,
+    'coordinate': coordinate,
+  });
+}
 
 class MyPertaminaApiService {
   static const baseUrl = 'https://api-map.my-pertamina.id';
@@ -66,6 +101,20 @@ class MyPertaminaApiService {
   ) async => TransactionReceiptModel.fromJson(
     await _get('/general/v1/transactions/$transactionId'),
   );
+  Future<Response<dynamic>> submitTransactionV3(
+    TransactionSubmission request,
+  ) => client.dio.post('/general/v3/transactions', data: request.toFormData());
+
+  Future<List<dynamic>> fetchLogbook(
+    String startPeriode,
+    String endPeriode,
+  ) async => unwrapList(
+    (await client.dio.get(
+      '/general/v1/transactions/logbook',
+      queryParameters: {'startPeriode': startPeriode, 'endPeriode': endPeriode},
+    )).data,
+  );
+
   Future<List<TransactionReceiptModel>> fetchReport(
     String startDate,
     String endDate,
@@ -74,6 +123,7 @@ class MyPertaminaApiService {
             (await client.dio.get(
               '/general/v3/transactions/report',
               queryParameters: {
+                'search': '',
                 'startDate': startDate,
                 'endDate': endDate,
                 'sort': 'latest',

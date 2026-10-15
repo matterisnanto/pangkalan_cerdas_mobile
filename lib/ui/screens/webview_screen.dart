@@ -192,17 +192,27 @@ class _WebViewScreenState extends State<WebViewScreen>
 (function() {
   if (window.__pcTransactionBridge) return;
   window.__pcTransactionBridge = true;
-  function forward(url, body) {
-    if (!url || !body) return;
-    if (url.indexOf('/general/v1/transactions/') < 0 && url.indexOf('/general/v2/transactions') < 0 && url.indexOf('/general/v3/transactions/report') < 0) return;
-    try { var parsed = typeof body === 'string' ? JSON.parse(body) : body; window.flutter_inappwebview.callHandler('myPertaminaTransaction', parsed); } catch (_) {}
+  function forward(method, url, body) {
+    if (String(method).toUpperCase() !== 'POST' || !url || !body) return;
+    if (url.indexOf('/general/v2/transactions') < 0 && url.indexOf('/general/v3/transactions') < 0) return;
+    try {
+      var parsed = typeof body === 'string' ? JSON.parse(body) : body;
+      window.flutter_inappwebview.callHandler('myPertaminaTransaction', parsed);
+    } catch (_) {}
   }
   const originalFetch = window.fetch;
-  window.fetch = function() { return originalFetch.apply(this, arguments).then(function(response) { const clone=response.clone(); clone.text().then(function(body){ forward(response.url, body); }); return response; }); };
+  window.fetch = function(input) {
+    var method = (arguments[1] && arguments[1].method) || (input && input.method) || 'GET';
+    return originalFetch.apply(this, arguments).then(function(response) {
+      const clone=response.clone();
+      clone.text().then(function(body){ forward(method, response.url, body); });
+      return response;
+    });
+  };
   const originalOpen = XMLHttpRequest.prototype.open;
   const originalSend = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.open = function(method, url) { this.__pcUrl=url; return originalOpen.apply(this, arguments); };
-  XMLHttpRequest.prototype.send = function() { this.addEventListener('load', function(){ forward(this.__pcUrl, this.responseText); }); return originalSend.apply(this, arguments); };
+  XMLHttpRequest.prototype.open = function(method, url) { this.__pcMethod=method; this.__pcUrl=url; return originalOpen.apply(this, arguments); };
+  XMLHttpRequest.prototype.send = function() { this.addEventListener('load', function(){ forward(this.__pcMethod, this.__pcUrl, this.responseText); }); return originalSend.apply(this, arguments); };
 })();
 ''';
 
