@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firebase_service.dart';
 import '../../services/secure_storage_service.dart';
+import '../widgets/theme_toggle_button.dart';
 
 class WebViewScreen extends StatefulWidget {
   final VoidCallback? onBackToDashboard;
@@ -46,6 +47,7 @@ class _WebViewScreenState extends State<WebViewScreen>
               padding: EdgeInsets.only(right: 8),
               child: Icon(Icons.check_circle, color: Colors.greenAccent),
             ),
+          const ThemeToggleButton(),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => _controller?.reload(),

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/pangkalan.dart';
+import '../models/mypertamina_models.dart';
 import '../services/api_client.dart';
 import '../services/secure_storage_service.dart';
 import '../services/firebase_service.dart';
@@ -18,6 +19,7 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isTokenValid = false;
   String? _errorMessage;
+  PangkalanProfileModel? _profile;
   VoidCallback? onTokenExpired;
 
   AuthProvider() {
@@ -31,10 +33,12 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isTokenAvailable => _token != null && _token!.isNotEmpty;
   bool get isTokenValid => _isTokenValid;
+  PangkalanProfileModel? get profile => _profile;
 
   Future<void> clearSession() async {
     _token = null;
     _pangkalan = null;
+    _profile = null;
     _isTokenValid = false;
     await _storage.clearSession();
     notifyListeners();
@@ -80,6 +84,7 @@ class AuthProvider extends ChangeNotifier {
     if (regId != null && regId.isNotEmpty) {
       _pangkalan = await _firebaseService.getPangkalan(regId);
     }
+    await fetchUserProfile();
     notifyListeners();
   }
 
@@ -99,6 +104,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final data = await MyPertaminaApiService(_apiClient).fetchProfile();
+      _profile = data;
 
       if (data.registrationId.isEmpty) {
         _errorMessage = 'Respon API kosong';

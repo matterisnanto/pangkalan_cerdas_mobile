@@ -12,6 +12,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/pelanggan_card.dart';
 import '../widgets/pelanggan_form_dialog.dart';
 import '../widgets/pelanggan_detail_modal.dart';
+import '../widgets/theme_toggle_button.dart';
 
 class PelangganScreen extends StatefulWidget {
   const PelangganScreen({super.key});
@@ -280,6 +281,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
           ),
           Row(
             children: [
+              const ThemeToggleButton(),
               _iconButton(
                 icon: Icons.upload_file,
                 tooltip: 'Import Excel',

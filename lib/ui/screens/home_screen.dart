@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../models/mypertamina_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/transaction_queue_provider.dart';
 import '../../services/automation_service.dart';
@@ -72,6 +73,11 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (auth.isTokenValid && auth.profile != null)
+              _ProfileCard(profile: auth.profile!)
+            else
+              _LoginCard(onLogin: widget.onOpenWebView),
+            const SizedBox(height: 14),
             _ControlCard(
               queue: queue,
               total: _entries.length,
@@ -107,6 +113,94 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+class _LoginCard extends StatelessWidget {
+  final VoidCallback? onLogin;
+  const _LoginCard({this.onLogin});
+  @override
+  Widget build(BuildContext context) => Card(
+    child: ListTile(
+      leading: const Icon(Icons.lock_outline, color: Colors.red),
+      title: const Text('Belum Login / Token Kadaluarsa'),
+      subtitle: const Text(
+        'Sesi habis. Login melalui WebView untuk memuat profil pangkalan.',
+      ),
+      trailing: FilledButton(
+        onPressed: onLogin,
+        child: const Text('Buka WebView'),
+      ),
+    ),
+  );
+}
+
+class _ProfileCard extends StatelessWidget {
+  final PangkalanProfileModel profile;
+  const _ProfileCard({required this.profile});
+  @override
+  Widget build(BuildContext context) {
+    final address = [
+      profile.storeAddress,
+      profile.villageName,
+      profile.ditrictName,
+      profile.city,
+      profile.province,
+    ].where((value) => value.isNotEmpty).join(', ');
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.storefront, color: Colors.green),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Informasi Pangkalan',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                const _TokenPill(active: true),
+              ],
+            ),
+            const Divider(),
+            _ProfileLine('Nama Pangkalan', profile.storeName),
+            _ProfileLine('ID Registrasi', profile.registrationId),
+            _ProfileLine('Pemilik / Pengelola', profile.name),
+            _ProfileLine('Alamat Lengkap', address),
+            _ProfileLine('No. Telepon', profile.phoneNumber),
+            _ProfileLine('Agen / Penyalur Resmi', profile.agenName),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileLine extends StatelessWidget {
+  final String label, value;
+  const _ProfileLine(this.label, this.value);
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 132,
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ),
+        Expanded(
+          child: Text(
+            value.isEmpty ? '-' : value,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _TokenPill extends StatelessWidget {
