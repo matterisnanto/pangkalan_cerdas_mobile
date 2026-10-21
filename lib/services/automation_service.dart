@@ -24,8 +24,9 @@ class AutomationService {
     required int targetStock,
     required String registrationId,
   }) async {
-    if (targetStock <= 0 || registrationId.isEmpty)
+    if (targetStock <= 0 || registrationId.isEmpty) {
       return const SmartQueueResult([]);
+    }
     final customers = await firebase.getAllPelanggan(registrationId);
     final today = DateTime.now();
     final startToday = DateTime(today.year, today.month, today.day);
@@ -52,4 +53,30 @@ class AutomationService {
     }
     return SmartQueueResult(selected);
   }
+
+  bool _isPaused = false;
+  bool get isPaused => _isPaused;
+
+  void pause() {
+    _isPaused = true;
+  }
+
+  void resume() {
+    _isPaused = false;
+  }
+
+  Future<List<Pelanggan>> retryFailed(String registrationId) async {
+    final failedLogs = await firebase.getLogGagal(registrationId);
+    return failedLogs
+        .map(
+          (log) => Pelanggan(
+            nik: log.nik,
+            nama: log.nama,
+            kategori: log.kategori,
+            registrationId: registrationId,
+          ),
+        )
+        .toList();
+  }
+
 }
