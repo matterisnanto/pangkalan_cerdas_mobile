@@ -132,6 +132,12 @@ class TransactionProvider extends ChangeNotifier {
   Future<int> syncAndSaveMyPertaminaTransactionsThisYear(
     List<Pelanggan> customers,
   ) async {
+    debugPrint(
+      '💳 [TRANSACTION PROVIDER] Memulai sinkronisasi transaksi MyPertamina...',
+    );
+    debugPrint(
+      '💳 [TRANSACTION PROVIDER] Master pelanggan: ${customers.length}',
+    );
     isLoading = true;
     error = null;
     notifyListeners();
@@ -190,6 +196,9 @@ class TransactionProvider extends ChangeNotifier {
             .putIfAbsent(customer.nama.trim().toUpperCase(), () => [])
             .add(customer);
       }
+      debugPrint(
+        '💳 [TRANSACTION PROVIDER] Transaksi berhasil ditarik: ${raw.length}',
+      );
       final data = raw.map((item) {
         final name = (item['name'] ?? item['customerName'] ?? '').toString();
         final masked =
@@ -230,6 +239,9 @@ class TransactionProvider extends ChangeNotifier {
         authProvider.registrationId,
         data,
       );
+      debugPrint(
+        '✅ [TRANSACTION PROVIDER] ${data.length} transaksi tersimpan ke Firestore.',
+      );
       await _firebase.autoCleanDuplicates(authProvider.registrationId);
       await loadSavedMyPertaminaTransactions(authProvider.registrationId);
       return data.length;
@@ -241,6 +253,7 @@ class TransactionProvider extends ChangeNotifier {
         error: e,
         stackTrace: stackTrace,
       );
+      debugPrint('❌ [TRANSACTION SYNC ERROR]: $e\n$stackTrace');
       debugPrint('📌 [MYPTM PROVIDER STACKTRACE]: $stackTrace');
       rethrow;
     } finally {

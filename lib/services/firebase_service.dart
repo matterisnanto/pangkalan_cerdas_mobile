@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/pangkalan.dart';
 import '../models/pelanggan.dart';
 import '../models/log_transaksi.dart';
@@ -219,6 +220,9 @@ class FirebaseService {
     String registrationId,
     List<Map<String, dynamic>> transactions,
   ) async {
+    debugPrint(
+      '🔥 [FIREBASE] Upsert transaksi dimulai. Registration ID: $registrationId | Jumlah: ${transactions.length}',
+    );
     const batchSize = 400;
     final collection = _myPertaminaTransactionsCol(registrationId);
     for (var i = 0; i < transactions.length; i += batchSize) {
@@ -234,8 +238,12 @@ class FirebaseService {
         data['documentId'] = docId;
         batch.set(collection.doc(docId), data, SetOptions(merge: true));
       }
-      if (end > i) await batch.commit();
+      if (end > i) {
+        await batch.commit();
+        debugPrint('✅ [FIREBASE] Batch transaksi tersimpan: $i-$end');
+      }
     }
+    debugPrint('✅ [FIREBASE] Upsert transaksi selesai.');
   }
 
   Future<int> autoCleanDuplicates(String registrationId) async {

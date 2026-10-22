@@ -38,59 +38,84 @@ class CustomerProvider extends ChangeNotifier {
   Future<void> autoSaveCustomerFromPortal(
     Map<String, dynamic> portalData,
   ) async {
-    final nik =
-        (portalData['nik'] ??
-                portalData['NIK'] ??
-                portalData['nationalityId'] ??
-                '')
-            .toString()
-            .trim();
-    final nama =
-        (portalData['nama'] ??
-                portalData['name'] ??
-                portalData['customerName'] ??
-                '')
-            .toString()
-            .trim();
-    if (nik.isEmpty || nama.isEmpty) return;
-    final familyId =
-        (portalData['familyId'] ??
-                portalData['familyIdEncrypted'] ??
-                portalData['encryptedFamilyId'] ??
-                '')
-            .toString()
-            .trim();
-    final category = Pelanggan.normalizeKategori(
-      (portalData['kategori'] ??
-              portalData['category'] ??
-              portalData['categories'])
-          ?.toString(),
+    debugPrint(
+      '👤 [CUSTOMER PROVIDER] Memproses auto-save pelanggan dari portal...',
     );
-    int readQuota(String key) => (portalData[key] is num)
-        ? (portalData[key] as num).toInt()
-        : int.tryParse('${portalData[key] ?? ''}') ?? 0;
-    final existing = await _pelangganService.getPelangganByNik(nik);
-    final customer =
-        (existing ?? Pelanggan(nik: nik, nama: nama, kategori: category))
-            .copyWith(
-              nama: nama,
-              kategori: category,
-              familyIdEncrypted: familyId.isEmpty ? null : familyId,
-              encryptedFamilyId: familyId.isEmpty ? null : familyId,
-              sisaKuota: readQuota('sisaKuota') == 0
-                  ? null
-                  : readQuota('sisaKuota'),
-              sisaKuotaBulanan: readQuota('sisaKuotaBulanan') == 0
-                  ? readQuota('sisa_kuota') == 0
-                        ? null
-                        : readQuota('sisa_kuota')
-                  : readQuota('sisaKuotaBulanan'),
-              sisaKuotaTotal: readQuota('sisaKuotaTotal') == 0
-                  ? null
-                  : readQuota('sisaKuotaTotal'),
-            );
-    await _pelangganService.addPelanggan(customer);
-    debugPrint('✅ [AUTO-CUSTOMER] Pelanggan tersimpan: $nik');
+    try {
+      final nik =
+          (portalData['nik'] ??
+                  portalData['NIK'] ??
+                  portalData['nationalityId'] ??
+                  '')
+              .toString()
+              .trim();
+      final nama =
+          (portalData['nama'] ??
+                  portalData['name'] ??
+                  portalData['customerName'] ??
+                  '')
+              .toString()
+              .trim();
+      debugPrint('👤 [CUSTOMER PROVIDER] Extracted NIK: $nik | Nama: $nama');
+      if (nik.isEmpty || nama.isEmpty) {
+        debugPrint(
+          '⚠️ [CUSTOMER PROVIDER] NIK/nama kosong; proses dibatalkan.',
+        );
+        return;
+      }
+      final familyId =
+          (portalData['familyId'] ??
+                  portalData['familyIdEncrypted'] ??
+                  portalData['encryptedFamilyId'] ??
+                  '')
+              .toString()
+              .trim();
+      final category = Pelanggan.normalizeKategori(
+        (portalData['kategori'] ??
+                portalData['category'] ??
+                portalData['categories'])
+            ?.toString(),
+      );
+      int readQuota(String key) => (portalData[key] is num)
+          ? (portalData[key] as num).toInt()
+          : int.tryParse('${portalData[key] ?? ''}') ?? 0;
+      final quota = readQuota('sisaKuota') != 0
+          ? readQuota('sisaKuota')
+          : readQuota('sisaKuotaBulanan');
+      debugPrint(
+        '👤 [CUSTOMER PROVIDER] Family ID: $familyId | Kategori: $category | Sisa Kuota: $quota',
+      );
+      final existing = await _pelangganService.getPelangganByNik(nik);
+      debugPrint(
+        existing == null
+            ? '➕ [CUSTOMER PROVIDER] Pelanggan NIK $nik BELUM ADA. Mendaftarkan pelanggan baru ke Firestore...'
+            : 'ℹ️ [CUSTOMER PROVIDER] Pelanggan NIK $nik SUDAH TERDAFTAR. Mengupdate Family ID...',
+      );
+      final customer =
+          (existing ?? Pelanggan(nik: nik, nama: nama, kategori: category))
+              .copyWith(
+                nama: nama,
+                kategori: category,
+                familyIdEncrypted: familyId.isEmpty ? null : familyId,
+                encryptedFamilyId: familyId.isEmpty ? null : familyId,
+                sisaKuota: readQuota('sisaKuota') == 0
+                    ? null
+                    : readQuota('sisaKuota'),
+                sisaKuotaBulanan: readQuota('sisaKuotaBulanan') == 0
+                    ? readQuota('sisa_kuota') == 0
+                          ? null
+                          : readQuota('sisa_kuota')
+                    : readQuota('sisaKuotaBulanan'),
+                sisaKuotaTotal: readQuota('sisaKuotaTotal') == 0
+                    ? null
+                    : readQuota('sisaKuotaTotal'),
+              );
+      await _pelangganService.addPelanggan(customer);
+      debugPrint('✅ [AUTO-CUSTOMER] Pelanggan tersimpan: $nik');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [CUSTOMER SAVE ERROR]: $e\n$stackTrace');
+      rethrow;
+    }
   }
 
   Future<void> syncAllCustomersQuotaFromMyPertamina() async {

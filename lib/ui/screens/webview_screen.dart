@@ -311,8 +311,14 @@ class _WebViewScreenState extends State<WebViewScreen>
                   userAgent:
                       'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
                 ),
+                onConsoleMessage: (controller, consoleMessage) {
+                  debugPrint('🌐 [WEBVIEW JS] ${consoleMessage.message}');
+                },
                 onWebViewCreated: (controller) {
                   _controller = controller;
+                  debugPrint(
+                    '🌐 [WEBVIEW JS] Interceptor aktif & mendengarkan Fetch/XHR request...',
+                  );
                   controller.addJavaScriptHandler(
                     handlerName: 'onTokenCaptured',
                     callback: (args) async {
@@ -360,6 +366,12 @@ class _WebViewScreenState extends State<WebViewScreen>
                     handlerName: 'onMyPertaminaTransactionCaptured',
                     callback: (args) async {
                       if (args.isEmpty || args.first is! String) return;
+                      debugPrint(
+                        '📩 [FLUTTER JS HANDLER] Event transaksi manual diterima dari WebView!',
+                      );
+                      debugPrint(
+                        '📦 [WEBVIEW CAPTURED PAYLOAD]: ${args.first}',
+                      );
                       try {
                         final decoded = jsonDecode(args.first as String);
                         if (decoded is! Map) return;
@@ -622,13 +634,17 @@ class _WebViewScreenState extends State<WebViewScreen>
 (function() {
   if (window.__pcTransactionBridge) return;
   window.__pcTransactionBridge = true;
+  console.log('🌐 [WEBVIEW JS] Interceptor aktif & mendengarkan Fetch/XHR request...');
   function forward(method, url, body, status) {
+    console.log('🌐 [WEBVIEW API CALL] Request URL: ' + url + ' | Status: ' + status);
     if (String(method).toUpperCase() !== 'POST' || !url || !body) return;
     if ((url.indexOf('/general/v2/transactions') < 0 && url.indexOf('/general/v3/transactions') < 0) ||
         (status !== 200 && status !== 201)) return;
     try {
       var parsed = typeof body === 'string' ? JSON.parse(body) : body;
-      window.flutter_inappwebview.callHandler('onMyPertaminaTransactionCaptured', JSON.stringify(parsed));
+      var jsonString = JSON.stringify(parsed);
+      if (url.indexOf('/transactions') >= 0 || url.indexOf('/customers/verify') >= 0) console.log('📦 [WEBVIEW CAPTURED PAYLOAD]: ' + jsonString);
+      window.flutter_inappwebview.callHandler('onMyPertaminaTransactionCaptured', jsonString);
     } catch (_) {}
   }
   const originalFetch = window.fetch;
