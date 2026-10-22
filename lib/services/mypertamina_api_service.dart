@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../models/mypertamina_models.dart';
 import 'api_client.dart';
 
@@ -101,29 +102,46 @@ class MyPertaminaApiService {
     String familyIdEncrypted,
     String category,
   ) async {
-    final normalizedCategory = category.trim().toUpperCase().contains('UMKM') ||
+    final encodedFamilyId = Uri.encodeComponent(familyIdEncrypted.trim());
+    final normalizedCategory =
+        category.trim().toUpperCase().contains('UMKM') ||
             category.trim().toUpperCase().contains('USAHA MIKRO')
         ? 'Usaha Mikro'
         : category.trim();
-    final response = await client.dio.get(
-      '$baseUrl/general/v5/customers/${Uri.encodeComponent(nik.trim())}/quota'
-      '?familyId=${Uri.encodeComponent(familyIdEncrypted.trim())}'
-      '&customerType=${Uri.encodeComponent(normalizedCategory)}',
+    final encodedCategory = Uri.encodeComponent(normalizedCategory);
+    debugPrint(
+      '🔍 [API QUOTA REQUEST] NIK: $nik | Category: $category | '
+      'Encoded familyId: $encodedFamilyId',
     );
-    final body = response.data;
-    final data = body is Map && body['data'] is Map
-        ? Map<String, dynamic>.from(body['data'] as Map)
-        : body is Map
-        ? Map<String, dynamic>.from(body)
-        : const <String, dynamic>{};
-    final quotaObj = data['quotaRemaining'];
-    int toInt(dynamic value) => value is num ? value.toInt() : int.tryParse('$value') ?? 0;
-    final map = quotaObj is Map ? quotaObj : const <String, dynamic>{};
-    return {
-      'monthly': toInt(map['monthly']),
-      'all': toInt(map['all']),
-      'family': toInt(map['family']),
-    };
+    try {
+      final response = await client.dio.get(
+        '$baseUrl/general/v5/customers/${Uri.encodeComponent(nik.trim())}/quota'
+        '?familyId=$encodedFamilyId'
+        '&customerType=$encodedCategory',
+      );
+      debugPrint(
+        '📥 [API QUOTA RESPONSE] Status: ${response.statusCode} | '
+        'Data: ${response.data}',
+      );
+      final body = response.data;
+      final data = body is Map && body['data'] is Map
+          ? Map<String, dynamic>.from(body['data'] as Map)
+          : body is Map
+          ? Map<String, dynamic>.from(body)
+          : const <String, dynamic>{};
+      final quotaObj = data['quotaRemaining'];
+      int toInt(dynamic value) =>
+          value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+      final map = quotaObj is Map ? quotaObj : const <String, dynamic>{};
+      return {
+        'monthly': toInt(map['monthly']),
+        'all': toInt(map['all']),
+        'family': toInt(map['family']),
+      };
+    } catch (e) {
+      debugPrint('❌ [API QUOTA ERROR] NIK: $nik | Exception: $e');
+      rethrow;
+    }
   }
 
   /// SMART AUTO-FILL NIK berdasarkan API MyPertamina
@@ -146,16 +164,19 @@ class MyPertaminaApiService {
     }
 
     String category = 'Rumah Tangga';
-    if (resp['customerTypes'] is List && (resp['customerTypes'] as List).isNotEmpty) {
+    if (resp['customerTypes'] is List &&
+        (resp['customerTypes'] as List).isNotEmpty) {
       final first = (resp['customerTypes'] as List).first;
       if (first is Map && first['name'] != null) {
         category = first['name'].toString().trim();
       }
-    } else if (resp['customerTypes'] is Map && resp['customerTypes']['name'] != null) {
+    } else if (resp['customerTypes'] is Map &&
+        resp['customerTypes']['name'] != null) {
       category = resp['customerTypes']['name'].toString().trim();
     }
 
-    final familyIdEncrypted = resp['familyIdEncrypted']?.toString() ??
+    final familyIdEncrypted =
+        resp['familyIdEncrypted']?.toString() ??
         resp['familyId']?.toString() ??
         '';
 
@@ -175,7 +196,8 @@ class MyPertaminaApiService {
         monthly = (quotaJson['monthly'] as num? ?? 0);
         quotaRemaining = monthly.toInt();
       } catch (_) {
-        quotaRemaining = (category.toLowerCase().contains('umkm') ||
+        quotaRemaining =
+            (category.toLowerCase().contains('umkm') ||
                 category.toLowerCase().contains('usaha'))
             ? 5
             : 2;
@@ -195,6 +217,7 @@ class MyPertaminaApiService {
       rawQuota: quotaJson,
     );
   }
+
   Future<(CustomerVerificationModel, QuotaRemainingModel)> syncCustomerQuota(
     String nik,
     String category,

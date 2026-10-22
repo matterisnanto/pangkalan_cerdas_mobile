@@ -50,7 +50,9 @@ class _PelangganScreenState extends State<PelangganScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.red.shade800 : const Color(0xFF00AA5B),
+        backgroundColor: isError
+            ? Colors.red.shade800
+            : const Color(0xFF00AA5B),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -147,8 +149,12 @@ class _PelangganScreenState extends State<PelangganScreen> {
   Future<void> _confirmDeletePelanggan(Pelanggan p) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dialogBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    final textPrimary = isDark
+        ? const Color(0xFFF8FAFC)
+        : const Color(0xFF0F172A);
+    final textSecondary = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF475569);
 
     final confirm = await showDialog<bool>(
       context: context,
@@ -172,7 +178,10 @@ class _PelangganScreenState extends State<PelangganScreen> {
             onPressed: () => Navigator.pop(dCtx, false),
             child: Text(
               'Batal',
-              style: TextStyle(color: textSecondary, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           ElevatedButton(
@@ -187,7 +196,10 @@ class _PelangganScreenState extends State<PelangganScreen> {
             onPressed: () => Navigator.pop(dCtx, true),
             child: const Text(
               'Hapus',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -231,7 +243,9 @@ class _PelangganScreenState extends State<PelangganScreen> {
   }) {
     final selected = _selectedKategori == label;
     final chipBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
-    final chipBorder = isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1);
+    final chipBorder = isDark
+        ? const Color(0xFF334155)
+        : const Color(0xFFCBD5E1);
 
     return ChoiceChip(
       label: Text(label),
@@ -262,7 +276,9 @@ class _PelangganScreenState extends State<PelangganScreen> {
     bool loading = false,
   }) {
     final btnBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
-    final btnBorder = isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1);
+    final btnBorder = isDark
+        ? const Color(0xFF334155)
+        : const Color(0xFFCBD5E1);
 
     return Tooltip(
       message: tooltip,
@@ -333,7 +349,10 @@ class _PelangganScreenState extends State<PelangganScreen> {
                   backgroundColor: const Color(0xFF00AA5B),
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -348,7 +367,11 @@ class _PelangganScreenState extends State<PelangganScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(Icons.file_upload_outlined, size: 18, color: Colors.white),
+                    : const Icon(
+                        Icons.file_upload_outlined,
+                        size: 18,
+                        color: Colors.white,
+                      ),
                 label: const Text(
                   'Import Excel',
                   style: TextStyle(
@@ -380,7 +403,9 @@ class _PelangganScreenState extends State<PelangganScreen> {
     required Color textSecondary,
   }) {
     final searchBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
-    final searchBorder = isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1);
+    final searchBorder = isDark
+        ? const Color(0xFF334155)
+        : const Color(0xFFCBD5E1);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -407,7 +432,10 @@ class _PelangganScreenState extends State<PelangganScreen> {
           filled: true,
           fillColor: searchBg,
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(20),
             borderSide: BorderSide(color: searchBorder),
@@ -428,6 +456,10 @@ class _PelangganScreenState extends State<PelangganScreen> {
   Widget _buildQuotaSyncBanner({required bool isDark}) {
     return Consumer<CustomerProvider>(
       builder: (context, provider, child) {
+        debugPrint(
+          '📊 [UI REBUILD] isSyncing: ${provider.isSyncingQuota} | '
+          'Progress: ${provider.syncCurrentIndex} / ${provider.syncTotalCount}',
+        );
         if (!provider.isSyncingQuota) return const SizedBox.shrink();
         final total = provider.syncTotalCount;
         final current = provider.syncCurrentIndex;
@@ -463,13 +495,15 @@ class _PelangganScreenState extends State<PelangganScreen> {
                     curve: Curves.easeOut,
                     builder: (context, animatedProgress, child) =>
                         LinearProgressIndicator(
-                      value: animatedProgress,
-                      minHeight: 7,
-                      backgroundColor: isDark ? Colors.white24 : Colors.white,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        Color(0xFF00AA5B),
-                      ),
-                    ),
+                          value: animatedProgress,
+                          minHeight: 7,
+                          backgroundColor: isDark
+                              ? Colors.white24
+                              : Colors.white,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFF00AA5B),
+                          ),
+                        ),
                   ),
                 ),
               ],
@@ -483,8 +517,12 @@ class _PelangganScreenState extends State<PelangganScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    final textPrimary = isDark
+        ? const Color(0xFFF8FAFC)
+        : const Color(0xFF0F172A);
+    final textSecondary = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF475569);
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
@@ -557,8 +595,12 @@ class _PelangganScreenState extends State<PelangganScreen> {
                       ),
                     );
                   }
-                  final emptyCardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-                  final emptyCardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+                  final emptyCardBg = isDark
+                      ? const Color(0xFF1E293B)
+                      : Colors.white;
+                  final emptyCardBorder = isDark
+                      ? const Color(0xFF334155)
+                      : const Color(0xFFE2E8F0);
 
                   if (snapshot.hasError) {
                     return Center(
@@ -633,7 +675,10 @@ class _PelangganScreenState extends State<PelangganScreen> {
                           'Sisa kuota seluruh pelanggan berhasil diperbarui!',
                         );
                       } catch (e) {
-                        _showSnack(e.toString().replaceFirst('Bad state: ', ''), isError: true);
+                        _showSnack(
+                          e.toString().replaceFirst('Bad state: ', ''),
+                          isError: true,
+                        );
                       }
                     },
                     child: ListView.builder(

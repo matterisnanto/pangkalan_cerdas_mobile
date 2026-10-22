@@ -37,12 +37,16 @@ class CustomerProvider extends ChangeNotifier {
     try {
       final customers = await _pelangganService.getAllPelanggan();
       syncTotalCount = customers.length;
+      debugPrint('🚀 [SYNC STARTED] Total Pelanggan: ${customers.length}');
       notifyListeners();
       final api = MyPertaminaApiService(_authProvider.apiClient);
       const chunkSize = 3;
       for (var start = 0; start < customers.length; start += chunkSize) {
         final end = (start + chunkSize).clamp(0, customers.length);
         final currentBatch = customers.sublist(start, end);
+        debugPrint(
+          '🔄 [SYNC BATCH] Processing Index: $syncCurrentIndex / $syncTotalCount',
+        );
 
         await Future.wait(
           currentBatch.map((customer) async {
@@ -55,17 +59,26 @@ class CustomerProvider extends ChangeNotifier {
                     : verified.familyId;
               }
               familyId = familyId.trim();
-              if (familyId.isEmpty) return;
+              if (familyId.isEmpty) {
+                debugPrint(
+                  '⚠️ [SYNC ITEM FAILED] NIK: ${customer.nik} Gagal dengan Error: familyIdEncrypted kosong',
+                );
+                return;
+              }
               final quotaMap = await api.fetchCustomerQuota(
                 customer.nik,
                 familyId,
                 customer.kategori,
               );
+              final newQuota = (quotaMap['monthly'] as num? ?? 0).toInt();
+              debugPrint(
+                '✅ [SYNC SUCCESS] NIK: ${customer.nik} | Quota Lama: ${customer.sisaKuota} -> Quota Baru: $newQuota',
+              );
               final now = DateTime.now();
               await _pelangganService.updatePelanggan(
                 customer.copyWith(
-                  sisaKuota: (quotaMap['monthly'] as num? ?? 0).toInt(),
-                  sisaKuotaBulanan: (quotaMap['monthly'] as num? ?? 0).toInt(),
+                  sisaKuota: newQuota,
+                  sisaKuotaBulanan: newQuota,
                   sisaKuotaTotal: (quotaMap['all'] as num? ?? 0).toInt(),
                   sisaKuotaKeluarga: (quotaMap['family'] as num? ?? 0).toInt(),
                   familyIdEncrypted: familyId,
@@ -74,8 +87,10 @@ class CustomerProvider extends ChangeNotifier {
                   lastSyncedAt: now,
                 ),
               );
-            } catch (_) {
-              // Continue syncing remaining customers when one NIK fails.
+            } catch (e) {
+              debugPrint(
+                '⚠️ [SYNC ITEM FAILED] NIK: ${customer.nik} Gagal dengan Error: $e',
+              );
             }
           }),
         );
@@ -89,6 +104,7 @@ class CustomerProvider extends ChangeNotifier {
     } finally {
       _isSyncing = false;
       isSyncingQuota = false;
+      debugPrint('🏁 [SYNC FINISHED] State isSyncingQuota di-reset ke FALSE');
       syncCurrentIndex = 0;
       syncTotalCount = 0;
       notifyListeners();
