@@ -37,8 +37,19 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
-  Future<void> savePangkalanAccount(List<Map<String, String>> accounts) async {
+  Future<void> saveAccountWithoutNotify(
+    List<Map<String, String>> accounts,
+  ) async {
     await _storage.savePangkalanAccounts(jsonEncode(accounts));
+  }
+
+  Future<void> savePangkalanAccount(List<Map<String, String>> accounts) async {
+    await saveAccountWithoutNotify(accounts);
+    safeNotifyListeners();
+  }
+
+  Future<void> refreshAccountList() async {
+    await _storage.readPangkalanAccounts();
     safeNotifyListeners();
   }
 

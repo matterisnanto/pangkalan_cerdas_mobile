@@ -53,6 +53,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final name = TextEditingController(text: account?['name']);
     final username = TextEditingController(text: account?['username']);
     final password = TextEditingController(text: account?['password']);
+    final authProvider = context.read<AuthProvider>();
+    final messengerContext = context;
     final result = await showDialog<Map<String, String>>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -108,11 +110,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _accounts[index] = result;
       }
     });
-    await _saveAccounts();
+    await authProvider.saveAccountWithoutNotify(_accounts);
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (messengerContext.mounted) {
+        authProvider.refreshAccountList();
+        ScaffoldMessenger.of(messengerContext).showSnackBar(
           const SnackBar(content: Text('Akun pangkalan berhasil disimpan!')),
         );
       }
