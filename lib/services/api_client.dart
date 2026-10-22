@@ -47,6 +47,8 @@ class ApiClient {
 
   Dio get dio => _dio;
 
+  Future<String?> get token async => _storage.getToken();
+
   /// GET /general/products/v1/products/user
   Future<Response> fetchUserProducts() async {
     return _dio.get('/general/products/v1/products/user');

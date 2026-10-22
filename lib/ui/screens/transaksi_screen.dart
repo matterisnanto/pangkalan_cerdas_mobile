@@ -826,6 +826,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                       );
                       return;
                     }
+                    debugPrint('▶️ [MYPTM UI] Tombol tarik transaksi ditekan');
                     try {
                       final customers = await _firebase.getAllPelanggan(
                         auth.registrationId,
@@ -841,14 +842,20 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                       );
                     } on DioException catch (e) {
                       if (!mounted) return;
-                      _showTopNotification(
-                        ApiClient.parseDioError(e),
-                        isError: true,
-                      );
-                    } catch (e) {
+                      final message = switch (e.response?.statusCode) {
+                        401 || 403 =>
+                          'Sesi login MyPertamina habis. Silakan login ulang di Halaman Portal.',
+                        406 =>
+                          'Server menolak permintaan (Rentang tanggal/Header). Mencoba penarikan ulang per bulan...',
+                        _ => ApiClient.parseDioError(e),
+                      };
+                      _showTopNotification(message, isError: true);
+                    } catch (e, stackTrace) {
+                      debugPrint('❌ [MYPTM UI ERROR]: $e');
+                      debugPrint('📌 [MYPTM UI STACKTRACE]: $stackTrace');
                       if (!mounted) return;
                       _showTopNotification(
-                        'Gagal menarik transaksi MyPertamina: $e',
+                        'Gagal mendapatkan transaksi: ${e.toString()}',
                         isError: true,
                       );
                     }
@@ -868,7 +875,16 @@ class _TransaksiScreenState extends State<TransaksiScreen>
             onChanged: (value) => setState(() => _myPertaminaSearch = value),
           ),
         ),
-        if (provider.isLoading) const LinearProgressIndicator(),
+        if (provider.isLoading)
+          Column(
+            children: [
+              const LinearProgressIndicator(),
+              if (provider.monthlyTotal > 0)
+                Text(
+                  'Menarik bulan ${provider.monthlyProgress}/${provider.monthlyTotal}...',
+                ),
+            ],
+          ),
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),

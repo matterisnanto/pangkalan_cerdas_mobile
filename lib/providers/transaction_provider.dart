@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:developer' as developer;
 import '../models/pelanggan_model.dart';
 import '../services/mypertamina_api_service.dart';
 import '../services/firebase_service.dart';
@@ -35,6 +36,8 @@ class TransactionProvider extends ChangeNotifier {
   List<EnrichedMyPertaminaTransaction> transactions = [];
   bool isLoading = false;
   String? error;
+  int monthlyProgress = 0;
+  int monthlyTotal = 0;
 
   TransactionProvider({required this.authProvider})
     : _api = MyPertaminaApiService(authProvider.apiClient);
@@ -99,11 +102,27 @@ class TransactionProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final now = DateTime.now();
-      final raw = await _api.fetchMyPertaminaTransactionReport(
-        startDate: '${now.year.toString().padLeft(4, '0')}-01-01',
-        endDate:
-            '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
-      );
+      monthlyProgress = 0;
+      monthlyTotal = now.month;
+      notifyListeners();
+      final raw = <Map<String, dynamic>>[];
+      for (var month = 1; month <= now.month; month++) {
+        final start =
+            '${now.year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-01';
+        final lastDay = DateTime(now.year, month + 1, 0).day;
+        final endDay = month == now.month ? now.day : lastDay;
+        final end =
+            '${now.year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${endDay.toString().padLeft(2, '0')}';
+        debugPrint('📅 [MYPTM] Bulan $month/$monthlyTotal: $start - $end');
+        raw.addAll(
+          await _api.fetchMyPertaminaTransactionReport(
+            startDate: start,
+            endDate: end,
+          ),
+        );
+        monthlyProgress = month;
+        notifyListeners();
+      }
       final byName = <String, List<Pelanggan>>{};
       for (final customer in customers) {
         byName
@@ -152,8 +171,15 @@ class TransactionProvider extends ChangeNotifier {
       );
       await loadSavedMyPertaminaTransactions();
       return data.length;
-    } catch (e) {
+    } catch (e, stackTrace) {
       error = e.toString();
+      developer.log(
+        '❌ [MYPTM PROVIDER ERROR]: $e',
+        name: 'TransactionProvider',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      debugPrint('📌 [MYPTM PROVIDER STACKTRACE]: $stackTrace');
       rethrow;
     } finally {
       isLoading = false;

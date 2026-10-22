@@ -273,44 +273,62 @@ class MyPertaminaApiService {
         startDate ?? '${now.year.toString().padLeft(4, '0')}-01-01';
     final resolvedEnd = endDate ?? _formatDate(now);
 
-    final response = await client.dio.get(
-      '/general/v3/transactions/report',
-      queryParameters: {
-        'search': '',
-        'sort': 'latest',
-        'startDate': resolvedStart,
-        'endDate': resolvedEnd,
-      },
-      options: Options(
-        headers: {
-          'Origin': 'https://subsiditepatlpg.mypertamina.id',
-          'Referer': 'https://subsiditepatlpg.mypertamina.id/',
-          'Accept': 'application/json, text/plain, */*',
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0',
+    final url =
+        '$baseUrl/general/v3/transactions/report?search=&sort=latest&startDate=$resolvedStart&endDate=$resolvedEnd';
+    debugPrint('🌐 [MYPTM API] Request URL: $url');
+    try {
+      final token = await client.token;
+      final response = await client.dio.get(
+        '/general/v3/transactions/report',
+        queryParameters: {
+          'search': '',
+          'sort': 'latest',
+          'startDate': resolvedStart,
+          'endDate': resolvedEnd,
         },
-      ),
-    );
-    final body = response.data;
-    final responseMap = body is Map
-        ? Map<String, dynamic>.from(body)
-        : const <String, dynamic>{};
-    final data = responseMap['data'] is Map
-        ? Map<String, dynamic>.from(responseMap['data'] as Map)
-        : const <String, dynamic>{};
-    lastSummaryReport = data['summaryReport'] is Map
-        ? Map<String, dynamic>.from(data['summaryReport'] as Map)
-        : const {};
-    final reports = data['customersReport'];
-    if (reports is! List) {
-      throw StateError(
-        'Respons report MyPertamina tidak memiliki data.customersReport',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0',
+            'Origin': 'https://subsiditepatlpg.mypertamina.id',
+            'Referer': 'https://subsiditepatlpg.mypertamina.id/',
+            'Accept-Language': 'id,en-US;q=0.9,en;q=0.8',
+          },
+        ),
       );
+      debugPrint(
+        '🔐 [MYPTM API] Token Length: ${((response.requestOptions.headers['Authorization'] as String?)?.replaceFirst('Bearer ', '').length ?? 0)}',
+      );
+      debugPrint('📤 [MYPTM API] Headers: ${response.requestOptions.headers}');
+      debugPrint('📥 [MYPTM API] Response Status Code: ${response.statusCode}');
+      debugPrint('📄 [MYPTM API] Response Body: ${response.data}');
+      final body = response.data;
+      final responseMap = body is Map
+          ? Map<String, dynamic>.from(body)
+          : const <String, dynamic>{};
+      final data = responseMap['data'] is Map
+          ? Map<String, dynamic>.from(responseMap['data'] as Map)
+          : const <String, dynamic>{};
+      lastSummaryReport = data['summaryReport'] is Map
+          ? Map<String, dynamic>.from(data['summaryReport'] as Map)
+          : const {};
+      final reports = data['customersReport'];
+      if (reports is! List) {
+        throw StateError(
+          'Respons report MyPertamina tidak memiliki data.customersReport',
+        );
+      }
+      return reports
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    } catch (e, stackTrace) {
+      debugPrint('❌ [MYPTM API ERROR]: $e');
+      debugPrint('📌 [STACKTRACE]: $stackTrace');
+      rethrow;
     }
-    return reports
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
   }
 
   Future<List<TransactionReceiptModel>> fetchReport({
