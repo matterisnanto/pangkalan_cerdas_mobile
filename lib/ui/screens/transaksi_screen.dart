@@ -929,6 +929,20 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                 ),
               ),
               const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Bersihkan Duplikat',
+                onPressed: provider.isLoading
+                    ? null
+                    : () async {
+                        final removed = await provider
+                            .cleanDuplicateMyPertaminaTransactions();
+                        if (!mounted) return;
+                        _showTopNotification(
+                          'Berhasil menghapus $removed data transaksi duplikat!',
+                        );
+                      },
+                icon: const Icon(Icons.cleaning_services),
+              ),
               OutlinedButton.icon(
                 onPressed: () => _showTransactionFilters(context, provider),
                 icon: const Icon(Icons.filter_list),

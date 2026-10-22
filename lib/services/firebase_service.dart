@@ -158,12 +158,20 @@ class FirebaseService {
       .doc(registrationId)
       .collection('mypertamina_transactions');
 
-  static String _sanitizeDocId(String rawId, String fallbackKey) {
-    final value = rawId.trim().isEmpty ? fallbackKey : rawId;
-    final sanitized = value.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
-    return sanitized.isEmpty
-        ? 'transaction_${DateTime.now().microsecondsSinceEpoch}'
-        : sanitized;
+  String generateUniqueTxDocId(String registrationId, Map<String, dynamic> tx) {
+    final reportId = tx['customerReportId']?.toString().trim() ?? '';
+    if (reportId.isNotEmpty) {
+      return '${registrationId}_$reportId'.replaceAll(
+        RegExp(r'[^a-zA-Z0-9_-]'),
+        '_',
+      );
+    }
+    final nik = tx['nationalityId']?.toString().trim() ?? 'UNKNOWN';
+    final createdAt = tx['createdAt']?.toString().trim() ?? 'NO_DATE';
+    return '${registrationId}_${nik}_$createdAt'.replaceAll(
+      RegExp(r'[^a-zA-Z0-9_-]'),
+      '_',
+    );
   }
 
   static dynamic _sanitizeFirestoreValue(dynamic value, {String? key}) {
@@ -219,10 +227,7 @@ class FirebaseService {
           : transactions.length;
       final batch = _db.batch();
       for (final transaction in transactions.sublist(i, end)) {
-        final rawId = transaction['customerReportId']?.toString() ?? '';
-        final fallback =
-            '${transaction['nationalityId'] ?? ''}_${transaction['createdAt'] ?? ''}';
-        final docId = _sanitizeDocId(rawId, fallback);
+        final docId = generateUniqueTxDocId(registrationId, transaction);
         final data = Map<String, dynamic>.from(
           _sanitizeFirestoreValue(transaction) as Map,
         );
@@ -231,6 +236,31 @@ class FirebaseService {
       }
       if (end > i) await batch.commit();
     }
+  }
+
+  Future<int> deleteDuplicateMyPertaminaTransactions(
+    String registrationId,
+  ) async {
+    final snapshot = await _myPertaminaTransactionsCol(registrationId).get();
+    final grouped =
+        <String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>{};
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final key = '${data['nationalityId'] ?? ''}|${data['createdAt'] ?? ''}';
+      grouped.putIfAbsent(key, () => []).add(doc);
+    }
+    final duplicates = grouped.values
+        .where((docs) => docs.length > 1)
+        .expand((docs) => docs.skip(1))
+        .toList();
+    for (var i = 0; i < duplicates.length; i += 400) {
+      final batch = _db.batch();
+      for (final doc in duplicates.skip(i).take(400)) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+    return duplicates.length;
   }
 
   Future<List<Map<String, dynamic>>> getMyPertaminaTransactions(
