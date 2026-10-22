@@ -133,7 +133,7 @@ class PelangganCard extends StatelessWidget {
                     children: [
                       Text(kuotaStatus, style: TextStyle(color: kuotaColor, fontSize: 12, fontWeight: FontWeight.w700)),
                       const SizedBox(width: 6),
-                      Text('• Sisa Kuota: $q Tabung', style: TextStyle(color: textPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
+                      Text('• Sisa Kuota: $q Tabung / Bulan', style: TextStyle(color: textPrimary, fontSize: 12, fontWeight: FontWeight.w700)),
                     ],
                   ),
                 ),

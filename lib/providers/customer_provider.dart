@@ -39,7 +39,7 @@ class CustomerProvider extends ChangeNotifier {
       syncTotalCount = customers.length;
       notifyListeners();
       final api = MyPertaminaApiService(_authProvider.apiClient);
-      const chunkSize = 4;
+      const chunkSize = 3;
       for (var start = 0; start < customers.length; start += chunkSize) {
         final end = (start + chunkSize).clamp(0, customers.length);
         final currentBatch = customers.sublist(start, end);
@@ -56,7 +56,7 @@ class CustomerProvider extends ChangeNotifier {
               }
               familyId = familyId.trim();
               if (familyId.isEmpty) return;
-              final quota = await api.fetchCustomerQuota(
+              final quotaMap = await api.fetchCustomerQuota(
                 customer.nik,
                 familyId,
                 customer.kategori,
@@ -64,8 +64,10 @@ class CustomerProvider extends ChangeNotifier {
               final now = DateTime.now();
               await _pelangganService.updatePelanggan(
                 customer.copyWith(
-                  sisaKuota: quota,
-                  sisaKuotaBulanan: quota,
+                  sisaKuota: (quotaMap['monthly'] as num? ?? 0).toInt(),
+                  sisaKuotaBulanan: (quotaMap['monthly'] as num? ?? 0).toInt(),
+                  sisaKuotaTotal: (quotaMap['all'] as num? ?? 0).toInt(),
+                  sisaKuotaKeluarga: (quotaMap['family'] as num? ?? 0).toInt(),
                   familyIdEncrypted: familyId,
                   encryptedFamilyId: familyId,
                   lastQuotaUpdate: now,

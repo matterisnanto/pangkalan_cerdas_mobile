@@ -13,6 +13,7 @@ class Pelanggan {
   final int sisaKuotaHarian;
   final int sisaKuotaBulanan;
   final int sisaKuota;
+  final int sisaKuotaTotal;
   final String? familyIdEncrypted;
   final DateTime? lastQuotaUpdate;
   final DateTime? lastTransactedAt;
@@ -33,6 +34,7 @@ class Pelanggan {
     this.sisaKuotaHarian = 0,
     this.sisaKuotaBulanan = 0,
     this.sisaKuota = 0,
+    this.sisaKuotaTotal = 0,
     this.familyIdEncrypted,
     this.lastQuotaUpdate,
     this.lastTransactedAt,
@@ -103,6 +105,8 @@ class Pelanggan {
       sisaKuota: (json['sisa_kuota'] as num?)?.toInt() ??
           (json['sisaKuota'] as num?)?.toInt() ??
           (json['sisaKuotaBulanan'] as num?)?.toInt() ?? 0,
+      sisaKuotaTotal: (json['sisaKuotaTotal'] as num?)?.toInt() ??
+          (json['sisa_kuota_total'] as num?)?.toInt() ?? 0,
       familyIdEncrypted: json['familyIdEncrypted'] as String? ??
           json['family_id_encrypted'] as String? ??
           json['encryptedFamilyId'] as String?,
@@ -142,6 +146,8 @@ class Pelanggan {
       'sisaKuotaHarian': sisaKuotaHarian,
       'sisaKuotaBulanan': sisaKuotaBulanan,
       'sisa_kuota': sisaKuota,
+      'sisaKuotaTotal': sisaKuotaTotal,
+      'sisa_kuota_total': sisaKuotaTotal,
       // Persist both canonical and legacy keys for existing Firestore data.
       'familyIdEncrypted': familyIdEncrypted ?? encryptedFamilyId,
       'family_id_encrypted': familyIdEncrypted ?? encryptedFamilyId,
@@ -171,6 +177,7 @@ class Pelanggan {
     int? sisaKuotaHarian,
     int? sisaKuotaBulanan,
     int? sisaKuota,
+    int? sisaKuotaTotal,
     String? familyIdEncrypted,
     DateTime? lastQuotaUpdate,
     DateTime? lastTransactedAt,
@@ -190,6 +197,7 @@ class Pelanggan {
       sisaKuotaHarian: sisaKuotaHarian ?? this.sisaKuotaHarian,
       sisaKuotaBulanan: sisaKuotaBulanan ?? this.sisaKuotaBulanan,
       sisaKuota: sisaKuota ?? this.sisaKuota,
+      sisaKuotaTotal: sisaKuotaTotal ?? this.sisaKuotaTotal,
       familyIdEncrypted: familyIdEncrypted ?? this.familyIdEncrypted,
       lastQuotaUpdate: lastQuotaUpdate ?? this.lastQuotaUpdate,
       lastTransactedAt: lastTransactedAt ?? this.lastTransactedAt,

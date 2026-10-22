@@ -96,15 +96,19 @@ class MyPertaminaApiService {
         ),
       );
 
-  Future<int> fetchCustomerQuota(
+  Future<Map<String, dynamic>> fetchCustomerQuota(
     String nik,
     String familyIdEncrypted,
-    String customerType,
+    String category,
   ) async {
+    final normalizedCategory = category.trim().toUpperCase().contains('UMKM') ||
+            category.trim().toUpperCase().contains('USAHA MIKRO')
+        ? 'Usaha Mikro'
+        : category.trim();
     final response = await client.dio.get(
       '$baseUrl/general/v5/customers/${Uri.encodeComponent(nik.trim())}/quota'
-      '?familyId=${Uri.encodeQueryComponent(familyIdEncrypted.trim())}'
-      '&customerType=${Uri.encodeQueryComponent(customerType.trim())}',
+      '?familyId=${Uri.encodeComponent(familyIdEncrypted.trim())}'
+      '&customerType=${Uri.encodeComponent(normalizedCategory)}',
     );
     final body = response.data;
     final data = body is Map && body['data'] is Map
@@ -113,15 +117,13 @@ class MyPertaminaApiService {
         ? Map<String, dynamic>.from(body)
         : const <String, dynamic>{};
     final quotaObj = data['quotaRemaining'];
-    dynamic monthlyQuota = 0;
-    if (quotaObj is Map) {
-      monthlyQuota = quotaObj['monthly'] ?? quotaObj['family'] ?? 0;
-    } else if (quotaObj is num) {
-      monthlyQuota = quotaObj;
-    }
-    return monthlyQuota is num
-        ? monthlyQuota.toInt()
-        : int.tryParse('$monthlyQuota') ?? 0;
+    int toInt(dynamic value) => value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+    final map = quotaObj is Map ? quotaObj : const <String, dynamic>{};
+    return {
+      'monthly': toInt(map['monthly']),
+      'all': toInt(map['all']),
+      'family': toInt(map['family']),
+    };
   }
 
   /// SMART AUTO-FILL NIK berdasarkan API MyPertamina
@@ -158,19 +160,20 @@ class MyPertaminaApiService {
         '';
 
     // c. GET https://api-map.my-pertamina.id/general/v5/customers/$nik/quota?familyId=$familyIdEncrypted&customerType=$category
+    Map<String, dynamic> quotaJson = {};
     int quotaRemaining = 0;
     num daily = 0;
     num monthly = 0;
-    Map<String, dynamic> quotaJson = {};
 
     if (familyIdEncrypted.isNotEmpty) {
       try {
-        quotaRemaining = await fetchCustomerQuota(
+        quotaJson = await fetchCustomerQuota(
           cleanNik,
           familyIdEncrypted,
           category,
         );
-        monthly = quotaRemaining;
+        monthly = (quotaJson['monthly'] as num? ?? 0);
+        quotaRemaining = monthly.toInt();
       } catch (_) {
         quotaRemaining = (category.toLowerCase().contains('umkm') ||
                 category.toLowerCase().contains('usaha'))
