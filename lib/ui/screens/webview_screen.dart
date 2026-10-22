@@ -29,6 +29,44 @@ class _WebViewScreenState extends State<WebViewScreen>
   String _tempPassword = '';
   String? _lastProcessedDashboardUrl;
   bool _isShowingAccountSuggestions = false;
+  bool _silentLoginInProgress = false;
+
+  Future<void> _attemptSilentLogin(Uri? url) async {
+    final currentUrl = url?.toString().toLowerCase() ?? '';
+    final isLoginPage =
+        currentUrl.contains('/login') || currentUrl.contains('/merchant-login');
+    if (!isLoginPage || _silentLoginInProgress) return;
+
+    final auth = context.read<AuthProvider>();
+    if (!auth.isTokenAvailable || !auth.isTokenValid) return;
+    await _loadAccounts();
+    if (!mounted || _accounts.isEmpty) return;
+    final account = _accounts.firstWhere(
+      (item) =>
+          (item['username'] ?? '').trim().isNotEmpty &&
+          (item['password'] ?? '').trim().isNotEmpty,
+      orElse: () => <String, String>{},
+    );
+    if (account.isEmpty) return;
+
+    _silentLoginInProgress = true;
+    try {
+      await _fillAccount(account);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      await _controller?.evaluateJavascript(
+        source: '''
+          (function() {
+            const buttons = Array.from(document.querySelectorAll('button, input[type="submit"]'));
+            const button = buttons.find((item) =>
+              /masuk|login|sign in/i.test((item.innerText || item.value || '').trim()));
+            if (button) button.click();
+          })();
+        ''',
+      );
+    } finally {
+      _silentLoginInProgress = false;
+    }
+  }
 
   Future<void> _loadAccounts() async {
     final raw = await _storage.readPangkalanAccounts();
@@ -293,8 +331,11 @@ class _WebViewScreenState extends State<WebViewScreen>
                 ]),
                 initialSettings: InAppWebViewSettings(
                   javaScriptEnabled: true,
+                  thirdPartyCookiesEnabled: true,
                   domStorageEnabled: true,
+                  databaseEnabled: true,
                   clearCache: false,
+                  clearSessionCache: false,
                   cacheEnabled: true,
                   sharedCookiesEnabled: true,
                   useShouldInterceptRequest: true,
@@ -347,6 +388,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                         "document.documentElement.style.paddingBottom = '120px';",
                   );
                   await _handleUrl(url, controller);
+                  await _attemptSilentLogin(url);
                   if (url.toString() ==
                           'https://subsiditepatlpg.mypertamina.id/' ||
                       url.toString() ==
@@ -360,6 +402,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                 onUpdateVisitedHistory:
                     (controller, url, androidIsReload) async {
                       await _handleUrl(url, controller);
+                      await _attemptSilentLogin(url);
                     },
                 onProgressChanged: (controller, progress) {
                   setState(() {
