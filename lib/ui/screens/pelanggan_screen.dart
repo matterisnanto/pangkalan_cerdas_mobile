@@ -479,12 +479,26 @@ class _PelangganScreenState extends State<PelangganScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'Memperbarui Kuota: $current / $total Pelanggan ($percent%)',
-                  style: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF14532D),
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.sync,
+                      color: isDark ? Colors.white : const Color(0xFF14532D),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Memperbarui Kuota: $current / $total Pelanggan ($percent%)',
+                        style: TextStyle(
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF14532D),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 9),
                 ClipRRect(
@@ -553,7 +567,6 @@ class _PelangganScreenState extends State<PelangganScreen> {
               textPrimary: textPrimary,
               textSecondary: textSecondary,
             ),
-            _buildQuotaSyncBanner(isDark: isDark),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
@@ -581,6 +594,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
                 ],
               ),
             ),
+            _buildQuotaSyncBanner(isDark: isDark),
             Expanded(
               child: StreamBuilder<List<Pelanggan>>(
                 stream: _service.streamPelanggan(
