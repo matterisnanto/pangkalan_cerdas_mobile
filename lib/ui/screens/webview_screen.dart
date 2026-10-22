@@ -25,6 +25,9 @@ class _WebViewScreenState extends State<WebViewScreen>
   bool _isMerchantLogin = false;
   List<Map<String, String>> _accounts = [];
   final _storage = SecureStorageService();
+  String _tempUsername = '';
+  String _tempPassword = '';
+  String? _lastProcessedDashboardUrl;
 
   Future<void> _loadAccounts() async {
     final raw = await _storage.readPangkalanAccounts();
@@ -62,6 +65,57 @@ class _WebViewScreenState extends State<WebViewScreen>
     if (mounted) {
       _showTopNotification(
         'Data login [${account['name']}] berhasil diisikan!',
+      );
+    }
+  }
+
+  Future<void> _captureManualLogin(List<dynamic> args) async {
+    if (args.length < 2) return;
+    final username = args[0]?.toString().trim() ?? '';
+    final password = args[1]?.toString() ?? '';
+    if (username.isEmpty || password.isEmpty) return;
+    _tempUsername = username;
+    _tempPassword = password;
+  }
+
+  Future<void> _handleUrl(Uri? url, InAppWebViewController controller) async {
+    final value = url?.toString() ?? '';
+    final isLogin =
+        value.contains('/merchant-login') || value.contains('/login');
+    if (isLogin != _isMerchantLogin && mounted) {
+      setState(() => _isMerchantLogin = isLogin);
+    }
+    if (isLogin) {
+      await controller.evaluateJavascript(source: _manualLoginListenerScript);
+      return;
+    }
+    final isDashboard =
+        value.contains('/dashboard') || value.contains('/merchant/home');
+    if (!isDashboard ||
+        _tempUsername.isEmpty ||
+        _tempPassword.isEmpty ||
+        _lastProcessedDashboardUrl == value) {
+      return;
+    }
+    _lastProcessedDashboardUrl = value;
+    final result = await controller.evaluateJavascript(
+      source: _profileNameScript,
+    );
+    final name = (result?.toString().trim() ?? '').isEmpty
+        ? 'Pangkalan MyPertamina'
+        : result.toString().trim();
+    final updated = <Map<String, String>>[
+      ..._accounts.where((account) => account['username'] != _tempUsername),
+      {'name': name, 'username': _tempUsername, 'password': _tempPassword},
+    ];
+    await _storage.savePangkalanAccounts(jsonEncode(updated));
+    _accounts = updated;
+    _tempUsername = '';
+    _tempPassword = '';
+    if (mounted) {
+      setState(() {});
+      _showTopNotification(
+        'Akun [$name] berhasil disimpan otomatis ke Pengaturan!',
       );
     }
   }
@@ -144,6 +198,12 @@ class _WebViewScreenState extends State<WebViewScreen>
                     },
                   );
                   controller.addJavaScriptHandler(
+                    handlerName: 'onManualLoginAttempt',
+                    callback: (args) async {
+                      await _captureManualLogin(args);
+                    },
+                  );
+                  controller.addJavaScriptHandler(
                     handlerName: 'myPertaminaTransaction',
                     callback: (args) async {
                       if (args.isEmpty || args.first is! Map) return;
@@ -163,10 +223,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                     source:
                         "document.documentElement.style.paddingBottom = '120px';",
                   );
-                  final login = url?.path == '/merchant-login';
-                  if (login != _isMerchantLogin && mounted) {
-                    setState(() => _isMerchantLogin = login);
-                  }
+                  await _handleUrl(url, controller);
                   if (url.toString() ==
                           'https://subsiditepatlpg.mypertamina.id/' ||
                       url.toString() ==
@@ -177,6 +234,10 @@ class _WebViewScreenState extends State<WebViewScreen>
                     );
                   }
                 },
+                onUpdateVisitedHistory:
+                    (controller, url, androidIsReload) async {
+                      await _handleUrl(url, controller);
+                    },
                 onProgressChanged: (controller, progress) {
                   setState(() {
                     _loadProgress = progress.toDouble();
@@ -329,6 +390,30 @@ class _WebViewScreenState extends State<WebViewScreen>
     if (String(name).toLowerCase() === 'authorization') capture(value);
     return originalSetRequestHeader.apply(this, arguments);
   };
+})();
+''';
+
+  static const String _manualLoginListenerScript = '''
+(function() {
+  if (window.__pcManualLoginListener) return;
+  window.__pcManualLoginListener = true;
+  const loginBtn = document.querySelector('button[type="submit"]') || document.querySelector('.btn-login');
+  if (loginBtn) {
+    loginBtn.addEventListener('click', function() {
+      const userInput = document.querySelector('input[type="text"]') || document.querySelector('input[name="username"]');
+      const passInput = document.querySelector('input[type="password"]') || document.querySelector('input[name="password"]');
+      if (userInput && passInput && window.flutter_inappwebview) {
+        window.flutter_inappwebview.callHandler('onManualLoginAttempt', userInput.value, passInput.value);
+      }
+    });
+  }
+})();
+''';
+
+  static const String _profileNameScript = '''
+(function() {
+  const profileNameEl = document.querySelector('.merchant-name') || document.querySelector('.user-profile-name') || document.querySelector('h4');
+  return profileNameEl ? profileNameEl.innerText.trim() : 'Pangkalan MyPertamina';
 })();
 ''';
 
