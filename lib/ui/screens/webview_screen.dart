@@ -269,9 +269,6 @@ class _WebViewScreenState extends State<WebViewScreen>
     _tempPassword = '';
     if (mounted) {
       setState(() {});
-      _showTopNotification(
-        'Akun [$name] berhasil disimpan otomatis ke Pengaturan!',
-      );
     }
   }
 
