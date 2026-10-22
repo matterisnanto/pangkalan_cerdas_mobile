@@ -48,7 +48,7 @@ class CustomerProvider extends ChangeNotifier {
           currentBatch.map((customer) async {
             try {
               var familyId = customer.familyIdEncrypted;
-              if (familyId == null || familyId.isEmpty) {
+              if (familyId == null || familyId.trim().isEmpty) {
                 final verified = await api.verifyNik(customer.nik);
                 familyId = verified.familyIdEncrypted.isNotEmpty
                     ? verified.familyIdEncrypted

@@ -103,8 +103,8 @@ class Pelanggan {
       sisaKuota: (json['sisa_kuota'] as num?)?.toInt() ??
           (json['sisaKuota'] as num?)?.toInt() ??
           (json['sisaKuotaBulanan'] as num?)?.toInt() ?? 0,
-      familyIdEncrypted: json['family_id_encrypted'] as String? ??
-          json['familyIdEncrypted'] as String? ??
+      familyIdEncrypted: json['familyIdEncrypted'] as String? ??
+          json['family_id_encrypted'] as String? ??
           json['encryptedFamilyId'] as String?,
       lastQuotaUpdate: lastQuotaUpdate,
       lastTransactedAt: lastTransactedAt,
@@ -142,6 +142,8 @@ class Pelanggan {
       'sisaKuotaHarian': sisaKuotaHarian,
       'sisaKuotaBulanan': sisaKuotaBulanan,
       'sisa_kuota': sisaKuota,
+      // Persist both canonical and legacy keys for existing Firestore data.
+      'familyIdEncrypted': familyIdEncrypted ?? encryptedFamilyId,
       'family_id_encrypted': familyIdEncrypted ?? encryptedFamilyId,
       'last_quota_update': lastQuotaUpdate == null
           ? null
