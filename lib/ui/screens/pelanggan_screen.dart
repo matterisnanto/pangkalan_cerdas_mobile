@@ -8,6 +8,7 @@ import '../../services/firebase_service.dart';
 import '../../services/batch_verification_service.dart';
 import '../../services/mypertamina_api_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/customer_provider.dart';
 import '../widgets/pelanggan_card.dart';
 import '../widgets/pelanggan_form_dialog.dart';
 import '../widgets/pelanggan_detail_modal.dart';
@@ -565,19 +566,35 @@ class _PelangganScreenState extends State<PelangganScreen> {
                       ),
                     );
                   }
-                  return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                    itemCount: list.length,
-                    itemBuilder: (context, idx) {
-                      final p = list[idx];
-                      return PelangganCard(
-                        pelanggan: p,
-                        onTap: () => _openDetailSheet(p),
-                        onEdit: () => _openFormDialog(existing: p),
-                        onDelete: () => _confirmDeletePelanggan(p),
-                        onHistory: () => _openDetailSheet(p),
-                      );
+                  return RefreshIndicator(
+                    color: const Color(0xFF00AA5B),
+                    onRefresh: () async {
+                      try {
+                        await context
+                            .read<CustomerProvider>()
+                            .syncAllCustomersQuotaFromMyPertamina();
+                        _showSnack(
+                          'Sisa kuota seluruh pelanggan berhasil diperbarui!',
+                        );
+                      } catch (e) {
+                        _showSnack(e.toString().replaceFirst('Bad state: ', ''), isError: true);
+                      }
                     },
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                      itemCount: list.length,
+                      itemBuilder: (context, idx) {
+                        final p = list[idx];
+                        return PelangganCard(
+                          pelanggan: p,
+                          onTap: () => _openDetailSheet(p),
+                          onEdit: () => _openFormDialog(existing: p),
+                          onDelete: () => _confirmDeletePelanggan(p),
+                          onHistory: () => _openDetailSheet(p),
+                        );
+                      },
+                    ),
                   );
                 },
               ),

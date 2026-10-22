@@ -37,8 +37,11 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
     _tglCtrl = TextEditingController(text: widget.existing?.tanggalLahir ?? '');
     _alamatCtrl = TextEditingController(text: widget.existing?.alamat ?? '');
     _kategori = widget.existing?.kategori ?? 'Rumah Tangga';
-    _familyIdEncrypted = widget.existing?.encryptedFamilyId;
-    _quotaRemaining = widget.existing?.sisaKuotaHarian;
+    _familyIdEncrypted = widget.existing?.familyIdEncrypted ??
+        widget.existing?.encryptedFamilyId;
+    _quotaRemaining = widget.existing?.sisaKuota ??
+        widget.existing?.sisaKuotaBulanan ??
+        widget.existing?.sisaKuotaHarian;
     _lastCheckedNik = widget.existing?.nik;
 
     _nikCtrl.addListener(_handleNikInput);
@@ -466,8 +469,13 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
           ? _alamatCtrl.text.trim()
           : null,
       encryptedFamilyId: _familyIdEncrypted ?? widget.existing?.encryptedFamilyId,
+      familyIdEncrypted: _familyIdEncrypted ?? widget.existing?.familyIdEncrypted,
+      sisaKuota: _quotaRemaining ?? widget.existing?.sisaKuota ?? 0,
       sisaKuotaHarian: _quotaRemaining ?? widget.existing?.sisaKuotaHarian ?? 0,
       sisaKuotaBulanan: _quotaRemaining ?? widget.existing?.sisaKuotaBulanan ?? 0,
+      lastQuotaUpdate: _quotaRemaining != null
+          ? DateTime.now()
+          : widget.existing?.lastQuotaUpdate,
       lastSyncedAt: _quotaRemaining != null ? DateTime.now() : widget.existing?.lastSyncedAt,
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );

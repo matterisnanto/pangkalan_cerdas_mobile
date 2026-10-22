@@ -1,0 +1,71 @@
+import 'package:flutter/foundation.dart';
+
+import '../services/mypertamina_api_service.dart';
+import '../services/pelanggan_service.dart';
+import '../services/secure_storage_service.dart';
+import 'auth_provider.dart';
+
+class CustomerProvider extends ChangeNotifier {
+  final PelangganService _pelangganService;
+  final AuthProvider _authProvider;
+  final SecureStorageService _storage;
+  bool _isSyncing = false;
+
+  CustomerProvider({
+    PelangganService? pelangganService,
+    required this._authProvider,
+    SecureStorageService? storage,
+  }) : _pelangganService = pelangganService ?? PelangganService(),
+       _storage = storage ?? SecureStorageService();
+
+  bool get isSyncing => _isSyncing;
+
+  Future<void> syncAllCustomersQuotaFromMyPertamina() async {
+    if (_isSyncing) return;
+    final token = await _storage.getToken();
+    if (token == null || token.isEmpty || !_authProvider.isTokenValid) {
+      throw StateError('Sesi Habis - Silakan Login di WebView');
+    }
+
+    _isSyncing = true;
+    notifyListeners();
+    try {
+      final customers = await _pelangganService.getAllPelanggan();
+      final api = MyPertaminaApiService(_authProvider.apiClient);
+      for (final customer in customers) {
+        try {
+          var familyId = customer.familyIdEncrypted;
+          if (familyId == null || familyId.isEmpty) {
+            final verified = await api.verifyNik(customer.nik);
+            familyId = verified.familyIdEncrypted.isNotEmpty
+                ? verified.familyIdEncrypted
+                : verified.familyId;
+          }
+          if (familyId.isEmpty) continue;
+          final quota = await api.fetchCustomerQuota(
+            customer.nik,
+            familyId,
+            customer.kategori,
+          );
+          await _pelangganService.updatePelanggan(
+            customer.copyWith(
+              sisaKuota: quota,
+              sisaKuotaBulanan: quota,
+              familyIdEncrypted: familyId,
+              encryptedFamilyId: familyId,
+              lastQuotaUpdate: DateTime.now(),
+              lastSyncedAt: DateTime.now(),
+            ),
+          );
+        } catch (_) {
+          // Continue syncing remaining customers when one NIK fails.
+        }
+        notifyListeners();
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
+    } finally {
+      _isSyncing = false;
+      notifyListeners();
+    }
+  }
+}

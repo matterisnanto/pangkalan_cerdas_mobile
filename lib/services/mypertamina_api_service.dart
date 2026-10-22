@@ -96,6 +96,33 @@ class MyPertaminaApiService {
         ),
       );
 
+  Future<int> fetchCustomerQuota(
+    String nik,
+    String familyIdEncrypted,
+    String customerType,
+  ) async {
+    final response = await client.dio.get(
+      '$baseUrl/general/v5/customers/$nik/quota',
+      queryParameters: {
+        'familyId': familyIdEncrypted,
+        'customerType': customerType,
+      },
+    );
+    final body = response.data;
+    final data = body is Map && body['data'] is Map
+        ? Map<String, dynamic>.from(body['data'] as Map)
+        : body is Map
+        ? Map<String, dynamic>.from(body)
+        : <String, dynamic>{};
+    final quotaObj = data['quotaRemaining'];
+    if (quotaObj is Map) {
+      final value = quotaObj['monthly'] ?? quotaObj['family'] ?? 0;
+      return value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+    }
+    if (quotaObj is num) return quotaObj.toInt();
+    return 0;
+  }
+
   /// SMART AUTO-FILL NIK berdasarkan API MyPertamina
   Future<AutoFetchedCustomer> autoFetchCustomerByNik(String nik) async {
     final cleanNik = nik.trim();
@@ -137,25 +164,12 @@ class MyPertaminaApiService {
 
     if (familyIdEncrypted.isNotEmpty) {
       try {
-        quotaJson = await _get(
-          '/general/v5/customers/$cleanNik/quota',
-          query: {
-            'familyId': familyIdEncrypted,
-            'customerType': category,
-          },
+        quotaRemaining = await fetchCustomerQuota(
+          cleanNik,
+          familyIdEncrypted,
+          category,
         );
-        daily = (quotaJson['dailyAll'] ?? quotaJson['dailyPerSegment'] ?? 0) as num;
-        monthly = (quotaJson['monthly'] ?? 0) as num;
-        final rawRemaining = quotaJson['quotaRemaining'] ??
-            quotaJson['dailyAll'] ??
-            quotaJson['dailyPerSegment'] ??
-            quotaJson['familyQuota'] ??
-            daily;
-        if (rawRemaining is num) {
-          quotaRemaining = rawRemaining.toInt();
-        } else if (rawRemaining != null) {
-          quotaRemaining = int.tryParse(rawRemaining.toString()) ?? 0;
-        }
+        monthly = quotaRemaining;
       } catch (_) {
         quotaRemaining = (category.toLowerCase().contains('umkm') ||
                 category.toLowerCase().contains('usaha'))

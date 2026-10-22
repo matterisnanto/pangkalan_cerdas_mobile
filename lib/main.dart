@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/customer_provider.dart';
 import 'providers/transaction_queue_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/notification_service.dart';
@@ -52,6 +53,13 @@ class PangkalanCerdasApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, CustomerProvider>(
+          create: (context) => CustomerProvider(
+            authProvider: context.read<AuthProvider>(),
+          ),
+          update: (_, auth, previous) =>
+              previous ?? CustomerProvider(authProvider: auth),
+        ),
         ChangeNotifierProvider(create: (_) => TransactionQueueProvider()),
       ],
       child: Consumer<ThemeProvider>(

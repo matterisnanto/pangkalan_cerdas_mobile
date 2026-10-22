@@ -12,6 +12,9 @@ class Pelanggan {
   final String? registrationId;
   final int sisaKuotaHarian;
   final int sisaKuotaBulanan;
+  final int sisaKuota;
+  final String? familyIdEncrypted;
+  final DateTime? lastQuotaUpdate;
   final DateTime? lastTransactedAt;
   final String? lastTransactionPangkalan;
   final int? sisaKuotaKeluarga;
@@ -29,6 +32,9 @@ class Pelanggan {
     this.registrationId,
     this.sisaKuotaHarian = 0,
     this.sisaKuotaBulanan = 0,
+    this.sisaKuota = 0,
+    this.familyIdEncrypted,
+    this.lastQuotaUpdate,
     this.lastTransactedAt,
     this.lastTransactionPangkalan,
     this.sisaKuotaKeluarga,
@@ -66,6 +72,12 @@ class Pelanggan {
     }
 
     DateTime? syncedAt;
+    final rawLastQuota = json['last_quota_update'] ?? json['lastQuotaUpdate'];
+    final lastQuotaUpdate = rawLastQuota is Timestamp
+        ? rawLastQuota.toDate()
+        : rawLastQuota is String
+        ? DateTime.tryParse(rawLastQuota)
+        : null;
     final rawLastTransaction = json['lastTransactedAt'];
     DateTime? lastTransactedAt = rawLastTransaction is Timestamp
         ? rawLastTransaction.toDate()
@@ -86,7 +98,15 @@ class Pelanggan {
       createdAt: parsedCreatedAt,
       registrationId: json['registrationId'] as String?,
       sisaKuotaHarian: (json['sisaKuotaHarian'] as num?)?.toInt() ?? 0,
-      sisaKuotaBulanan: (json['sisaKuotaBulanan'] as num?)?.toInt() ?? 0,
+      sisaKuotaBulanan: (json['sisa_kuota'] as num?)?.toInt() ??
+          (json['sisaKuotaBulanan'] as num?)?.toInt() ?? 0,
+      sisaKuota: (json['sisa_kuota'] as num?)?.toInt() ??
+          (json['sisaKuota'] as num?)?.toInt() ??
+          (json['sisaKuotaBulanan'] as num?)?.toInt() ?? 0,
+      familyIdEncrypted: json['family_id_encrypted'] as String? ??
+          json['familyIdEncrypted'] as String? ??
+          json['encryptedFamilyId'] as String?,
+      lastQuotaUpdate: lastQuotaUpdate,
       lastTransactedAt: lastTransactedAt,
       lastTransactionPangkalan:
           json['lastTransactionPangkalan'] as String? ??
@@ -96,6 +116,17 @@ class Pelanggan {
       lastSyncedAt: syncedAt,
     );
   }
+
+  Map<String, dynamic> toMap() => toJson();
+
+  Map<String, dynamic> toFirestore() => toJson();
+
+  factory Pelanggan.fromMap(Map<String, dynamic> map, {String? docId}) =>
+      Pelanggan.fromJson(map, docId: docId);
+
+  factory Pelanggan.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> snapshot,
+  ) => Pelanggan.fromJson(snapshot.data() ?? const {}, docId: snapshot.id);
 
   Map<String, dynamic> toJson() {
     return {
@@ -110,6 +141,11 @@ class Pelanggan {
           : FieldValue.serverTimestamp(),
       'sisaKuotaHarian': sisaKuotaHarian,
       'sisaKuotaBulanan': sisaKuotaBulanan,
+      'sisa_kuota': sisaKuota,
+      'family_id_encrypted': familyIdEncrypted ?? encryptedFamilyId,
+      'last_quota_update': lastQuotaUpdate == null
+          ? null
+          : Timestamp.fromDate(lastQuotaUpdate!),
       'lastTransactedAt': lastTransactedAt == null
           ? null
           : Timestamp.fromDate(lastTransactedAt!),
@@ -132,6 +168,9 @@ class Pelanggan {
     DateTime? createdAt,
     int? sisaKuotaHarian,
     int? sisaKuotaBulanan,
+    int? sisaKuota,
+    String? familyIdEncrypted,
+    DateTime? lastQuotaUpdate,
     DateTime? lastTransactedAt,
     String? lastTransactionPangkalan,
     int? sisaKuotaKeluarga,
@@ -148,6 +187,9 @@ class Pelanggan {
       createdAt: createdAt ?? this.createdAt,
       sisaKuotaHarian: sisaKuotaHarian ?? this.sisaKuotaHarian,
       sisaKuotaBulanan: sisaKuotaBulanan ?? this.sisaKuotaBulanan,
+      sisaKuota: sisaKuota ?? this.sisaKuota,
+      familyIdEncrypted: familyIdEncrypted ?? this.familyIdEncrypted,
+      lastQuotaUpdate: lastQuotaUpdate ?? this.lastQuotaUpdate,
       lastTransactedAt: lastTransactedAt ?? this.lastTransactedAt,
       lastTransactionPangkalan:
           lastTransactionPangkalan ?? this.lastTransactionPangkalan,
