@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../models/pelanggan_model.dart';
 import '../services/mypertamina_api_service.dart';
 import '../services/pelanggan_service.dart';
 import '../services/secure_storage_service.dart';
@@ -28,6 +29,64 @@ class CustomerProvider extends ChangeNotifier {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (hasListeners) notifyListeners();
     });
+  }
+
+  Future<void> autoSaveCustomerFromPortal(
+    Map<String, dynamic> portalData,
+  ) async {
+    final nik =
+        (portalData['nik'] ??
+                portalData['NIK'] ??
+                portalData['nationalityId'] ??
+                '')
+            .toString()
+            .trim();
+    final nama =
+        (portalData['nama'] ??
+                portalData['name'] ??
+                portalData['customerName'] ??
+                '')
+            .toString()
+            .trim();
+    if (nik.isEmpty || nama.isEmpty) return;
+    final familyId =
+        (portalData['familyId'] ??
+                portalData['familyIdEncrypted'] ??
+                portalData['encryptedFamilyId'] ??
+                '')
+            .toString()
+            .trim();
+    final category = Pelanggan.normalizeKategori(
+      (portalData['kategori'] ??
+              portalData['category'] ??
+              portalData['categories'])
+          ?.toString(),
+    );
+    int readQuota(String key) => (portalData[key] is num)
+        ? (portalData[key] as num).toInt()
+        : int.tryParse('${portalData[key] ?? ''}') ?? 0;
+    final existing = await _pelangganService.getPelangganByNik(nik);
+    final customer =
+        (existing ?? Pelanggan(nik: nik, nama: nama, kategori: category))
+            .copyWith(
+              nama: nama,
+              kategori: category,
+              familyIdEncrypted: familyId.isEmpty ? null : familyId,
+              encryptedFamilyId: familyId.isEmpty ? null : familyId,
+              sisaKuota: readQuota('sisaKuota') == 0
+                  ? null
+                  : readQuota('sisaKuota'),
+              sisaKuotaBulanan: readQuota('sisaKuotaBulanan') == 0
+                  ? readQuota('sisa_kuota') == 0
+                        ? null
+                        : readQuota('sisa_kuota')
+                  : readQuota('sisaKuotaBulanan'),
+              sisaKuotaTotal: readQuota('sisaKuotaTotal') == 0
+                  ? null
+                  : readQuota('sisaKuotaTotal'),
+            );
+    await _pelangganService.addPelanggan(customer);
+    debugPrint('✅ [AUTO-CUSTOMER] Pelanggan tersimpan: $nik');
   }
 
   Future<void> syncAllCustomersQuotaFromMyPertamina() async {

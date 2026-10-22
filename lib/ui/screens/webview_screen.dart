@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/customer_provider.dart';
+import '../../providers/transaction_provider.dart';
 import '../../services/firebase_service.dart';
 
 class WebViewScreen extends StatefulWidget {
@@ -286,7 +288,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                 ),
                 initialUserScripts: UnmodifiableListView<UserScript>([
                   UserScript(
-                    source: _tokenInterceptorScript,
+                    source: _tokenInterceptorScript + _dataCaptureScript,
                     injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
                     forMainFrameOnly: false,
                   ),
@@ -327,6 +329,28 @@ class _WebViewScreenState extends State<WebViewScreen>
                     handlerName: 'onManualLoginAttempt',
                     callback: (args) async {
                       await _captureManualLogin(args);
+                    },
+                  );
+                  controller.addJavaScriptHandler(
+                    handlerName: 'onMyPertaminaDataCaptured',
+                    callback: (args) async {
+                      if (args.isEmpty || args.first is! Map) return;
+                      final data = Map<String, dynamic>.from(args.first as Map);
+                      final auth = context.read<AuthProvider>();
+                      await context
+                          .read<CustomerProvider>()
+                          .autoSaveCustomerFromPortal(data);
+                      final customers = await FirebaseService().getAllPelanggan(
+                        auth.registrationId,
+                      );
+                      await context
+                          .read<TransactionProvider>()
+                          .syncAndSaveMyPertaminaTransactionsThisYear(
+                            customers,
+                          );
+                      debugPrint(
+                        '✅ [AUTO-CAPTURE] Berhasil menyimpan pelanggan & transaksi dari portal!',
+                      );
                     },
                   );
                   controller.addJavaScriptHandler(
@@ -482,6 +506,39 @@ class _WebViewScreenState extends State<WebViewScreen>
   XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
     if (String(name).toLowerCase() === 'authorization') capture(value);
     return originalSetRequestHeader.apply(this, arguments);
+  };
+})();
+''';
+
+  static const String _dataCaptureScript = r'''
+(function() {
+  if (window.__pcDataCapture) return;
+  window.__pcDataCapture = true;
+  function target(url) {
+    return url && (String(url).indexOf('/general/v3/customers/verify') >= 0 ||
+      String(url).indexOf('/general/v3/transactions') >= 0);
+  }
+  function forward(url, response) {
+    if (!target(url) || !response || (response.status !== 200 && response.status !== 201)) return;
+    response.clone().json().then(function(data) {
+      if (window.flutter_inappwebview) window.flutter_inappwebview.callHandler('onMyPertaminaDataCaptured', data);
+    }).catch(function() {});
+  }
+  var fetchOriginal = window.fetch;
+  window.fetch = function(input, init) {
+    var promise = fetchOriginal.apply(this, arguments);
+    promise.then(function(response) { forward(input && input.url || input, response); }).catch(function() {});
+    return promise;
+  };
+  var xhrOpen = XMLHttpRequest.prototype.open;
+  var xhrSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open = function(method, url) { this.__pcCaptureUrl = url; return xhrOpen.apply(this, arguments); };
+  XMLHttpRequest.prototype.send = function() {
+    this.addEventListener('load', function() {
+      if (!target(this.__pcCaptureUrl) || (this.status !== 200 && this.status !== 201)) return;
+      try { window.flutter_inappwebview.callHandler('onMyPertaminaDataCaptured', JSON.parse(this.responseText)); } catch (_) {}
+    });
+    return xhrSend.apply(this, arguments);
   };
 })();
 ''';
