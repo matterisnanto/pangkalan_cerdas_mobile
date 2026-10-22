@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../services/mypertamina_api_service.dart';
 import '../services/pelanggan_service.dart';
@@ -23,6 +23,13 @@ class CustomerProvider extends ChangeNotifier {
 
   bool get isSyncing => _isSyncing;
 
+  void safeNotifyListeners() {
+    if (!hasListeners) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (hasListeners) notifyListeners();
+    });
+  }
+
   Future<void> syncAllCustomersQuotaFromMyPertamina() async {
     if (_isSyncing) return;
     final token = await _storage.getToken();
@@ -33,12 +40,12 @@ class CustomerProvider extends ChangeNotifier {
     _isSyncing = true;
     isSyncingQuota = true;
     syncCurrentIndex = 0;
-    notifyListeners();
+    safeNotifyListeners();
     try {
       final customers = await _pelangganService.getAllPelanggan();
       syncTotalCount = customers.length;
       debugPrint('🚀 [SYNC STARTED] Total Pelanggan: ${customers.length}');
-      notifyListeners();
+      safeNotifyListeners();
       final api = MyPertaminaApiService(_authProvider.apiClient);
       const chunkSize = 3;
       for (var start = 0; start < customers.length; start += chunkSize) {
@@ -64,7 +71,7 @@ class CustomerProvider extends ChangeNotifier {
                   '⚠️ [SYNC ITEM FAILED] NIK: ${customer.nik} Gagal dengan Error: familyIdEncrypted kosong',
                 );
                 syncCurrentIndex++;
-                notifyListeners();
+                safeNotifyListeners();
                 return;
               }
               final quotaMap = await api.fetchCustomerQuota(
@@ -91,7 +98,7 @@ class CustomerProvider extends ChangeNotifier {
               // Update progress locally before Firestore, so permission errors
               // cannot block UI progress.
               syncCurrentIndex++;
-              notifyListeners();
+              safeNotifyListeners();
               try {
                 await _pelangganService.updatePelanggan(updatedCustomer);
               } catch (fsError) {
@@ -105,7 +112,7 @@ class CustomerProvider extends ChangeNotifier {
                 '⚠️ [SYNC ITEM FAILED] NIK: ${customer.nik} Gagal dengan Error: $e',
               );
               syncCurrentIndex++;
-              notifyListeners();
+              safeNotifyListeners();
             }
           }),
         );
@@ -120,7 +127,7 @@ class CustomerProvider extends ChangeNotifier {
       debugPrint('🏁 [SYNC FINISHED] State isSyncingQuota di-reset ke FALSE');
       syncCurrentIndex = 0;
       syncTotalCount = 0;
-      notifyListeners();
+      safeNotifyListeners();
     }
   }
 }

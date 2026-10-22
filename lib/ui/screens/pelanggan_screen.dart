@@ -153,6 +153,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
         return;
       }
       final path = await ExcelService.exportPelanggan(pelangganList: list);
+      if (!mounted) return;
       _showTopNotification('Berhasil diekspor: $path');
     } catch (e) {
       _showTopNotification('Gagal ekspor: $e', isError: true);
@@ -209,6 +210,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
             customers: list,
             registrationId: auth.registrationId,
           );
+      if (!mounted) return;
       showTopNotification(
         context,
         'Import selesai: ${result.verified} terverifikasi, ${result.failed} gagal',
@@ -233,15 +235,25 @@ class _PelangganScreenState extends State<PelangganScreen> {
           try {
             if (existing != null) {
               await _service.updatePelanggan(pelanggan);
-              showTopNotification(
-                context,
-                'Data pelanggan berhasil diperbarui',
-              );
+              if (!mounted) return;
+              Navigator.pop(ctx);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _showTopNotification('Data pelanggan berhasil diperbarui');
+                }
+              });
             } else {
               await _service.addPelanggan(pelanggan);
-              _showTopNotification('Pelanggan berhasil ditambahkan');
+              if (!mounted) return;
+              Navigator.pop(ctx);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _showTopNotification('Pelanggan berhasil ditambahkan');
+                }
+              });
             }
           } catch (e) {
+            if (!mounted) return;
             _showTopNotification('Gagal menyimpan: $e', isError: true);
           }
         },
@@ -315,6 +327,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
       } else {
         await _service.deletePelanggan(p.nik);
       }
+      if (!mounted) return;
       _showTopNotification('Pelanggan telah dihapus');
     }
   }
