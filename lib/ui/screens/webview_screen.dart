@@ -289,6 +289,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                 initialUserScripts: UnmodifiableListView<UserScript>([
                   UserScript(
                     source:
+                        _firebaseMessagingSuppressorScript +
                         _tokenInterceptorScript +
                         _dataCaptureScript +
                         _transactionBridgeScript,
@@ -298,6 +299,8 @@ class _WebViewScreenState extends State<WebViewScreen>
                 ]),
                 initialSettings: InAppWebViewSettings(
                   javaScriptEnabled: true,
+                  hardwareAcceleration: true,
+                  useHybridComposition: true,
                   thirdPartyCookiesEnabled: true,
                   domStorageEnabled: true,
                   databaseEnabled: true,
@@ -553,6 +556,29 @@ class _WebViewScreenState extends State<WebViewScreen>
       ),
     );
   }
+
+  static const String _firebaseMessagingSuppressorScript = r'''
+(function() {
+  if (window.__pcFirebaseMessagingSuppressor) return;
+  window.__pcFirebaseMessagingSuppressor = true;
+  window.addEventListener('unhandledrejection', function(event) {
+    var reason = event.reason;
+    var message = reason && reason.message ? String(reason.message) : '';
+    var code = reason && reason.code ? String(reason.code) : '';
+    if (message.indexOf('messaging/unsupported-browser') >= 0 ||
+        code.indexOf('messaging/unsupported-browser') >= 0) {
+      event.preventDefault();
+      console.log('🛡️ [WEBVIEW] Firebase messaging unsupported-browser suppressed');
+    }
+  });
+  if (!('Notification' in window)) {
+    window.Notification = {
+      permission: 'denied',
+      requestPermission: function() { return Promise.resolve('denied'); }
+    };
+  }
+})();
+''';
 
   static const String _tokenInterceptorScript = r'''
 (function() {
