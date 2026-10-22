@@ -63,6 +63,8 @@ class CustomerProvider extends ChangeNotifier {
                 debugPrint(
                   '⚠️ [SYNC ITEM FAILED] NIK: ${customer.nik} Gagal dengan Error: familyIdEncrypted kosong',
                 );
+                syncCurrentIndex++;
+                notifyListeners();
                 return;
               }
               final quotaMap = await api.fetchCustomerQuota(
@@ -75,28 +77,39 @@ class CustomerProvider extends ChangeNotifier {
                 '✅ [SYNC SUCCESS] NIK: ${customer.nik} | Quota Lama: ${customer.sisaKuota} -> Quota Baru: $newQuota',
               );
               final now = DateTime.now();
-              await _pelangganService.updatePelanggan(
-                customer.copyWith(
-                  sisaKuota: newQuota,
-                  sisaKuotaBulanan: newQuota,
-                  sisaKuotaTotal: (quotaMap['all'] as num? ?? 0).toInt(),
-                  sisaKuotaKeluarga: (quotaMap['family'] as num? ?? 0).toInt(),
-                  familyIdEncrypted: familyId,
-                  encryptedFamilyId: familyId,
-                  lastQuotaUpdate: now,
-                  lastSyncedAt: now,
-                ),
+              final updatedCustomer = customer.copyWith(
+                sisaKuota: newQuota,
+                sisaKuotaBulanan: newQuota,
+                sisaKuotaTotal: (quotaMap['all'] as num? ?? 0).toInt(),
+                sisaKuotaKeluarga: (quotaMap['family'] as num? ?? 0).toInt(),
+                familyIdEncrypted: familyId,
+                encryptedFamilyId: familyId,
+                lastQuotaUpdate: now,
+                lastSyncedAt: now,
               );
+
+              // Update progress locally before Firestore, so permission errors
+              // cannot block UI progress.
+              syncCurrentIndex++;
+              notifyListeners();
+              try {
+                await _pelangganService.updatePelanggan(updatedCustomer);
+              } catch (fsError) {
+                debugPrint(
+                  '⚠️ [FIRESTORE WRITE WARN] Gagal simpan ke Firestore '
+                  '(Permission Denied), tetapi UI lokal tetap di-update: $fsError',
+                );
+              }
             } catch (e) {
               debugPrint(
                 '⚠️ [SYNC ITEM FAILED] NIK: ${customer.nik} Gagal dengan Error: $e',
               );
+              syncCurrentIndex++;
+              notifyListeners();
             }
           }),
         );
 
-        syncCurrentIndex += currentBatch.length;
-        notifyListeners();
         if (end < customers.length) {
           await Future<void>.delayed(const Duration(milliseconds: 150));
         }
