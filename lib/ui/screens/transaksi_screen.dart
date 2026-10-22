@@ -45,6 +45,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_onTabChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadQueue();
       _loadLogs();
@@ -52,14 +53,31 @@ class _TransaksiScreenState extends State<TransaksiScreen>
     });
   }
 
-  void _loadSavedTransactionsIfReady() {
+  void _onTabChanged() {
+    if (_tabController.index != 2 || _tabController.indexIsChanging) return;
+    _loadSavedTransactionsIfReady(force: true);
+  }
+
+  void _loadSavedTransactionsIfReady({bool force = false}) {
     final registrationId = context.read<AuthProvider>().registrationId.trim();
-    if (registrationId.isEmpty || registrationId == _loadedRegistrationId)
+    if (registrationId.isEmpty ||
+        (!force && registrationId == _loadedRegistrationId))
       return;
     _loadedRegistrationId = registrationId;
-    context.read<TransactionProvider>().loadSavedMyPertaminaTransactions(
-      registrationId,
-    );
+    final provider = context.read<TransactionProvider>();
+    provider.loadSavedMyPertaminaTransactions(registrationId);
+    if (force) {
+      Future<void>(() async {
+        try {
+          final customers = await FirebaseService().getAllPelanggan(
+            registrationId,
+          );
+          await provider.syncAndSaveMyPertaminaTransactionsThisYear(customers);
+        } catch (e) {
+          debugPrint('⚠️ [MYPTM REFRESH] $e');
+        }
+      });
+    }
   }
 
   @override

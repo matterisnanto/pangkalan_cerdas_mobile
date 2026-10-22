@@ -288,7 +288,10 @@ class _WebViewScreenState extends State<WebViewScreen>
                 ),
                 initialUserScripts: UnmodifiableListView<UserScript>([
                   UserScript(
-                    source: _tokenInterceptorScript + _dataCaptureScript,
+                    source:
+                        _tokenInterceptorScript +
+                        _dataCaptureScript +
+                        _transactionBridgeScript,
                     injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
                     forMainFrameOnly: false,
                   ),
@@ -351,6 +354,33 @@ class _WebViewScreenState extends State<WebViewScreen>
                       debugPrint(
                         '✅ [AUTO-CAPTURE] Berhasil menyimpan pelanggan & transaksi dari portal!',
                       );
+                    },
+                  );
+                  controller.addJavaScriptHandler(
+                    handlerName: 'onMyPertaminaTransactionCaptured',
+                    callback: (args) async {
+                      if (args.isEmpty || args.first is! String) return;
+                      try {
+                        final decoded = jsonDecode(args.first as String);
+                        if (decoded is! Map) return;
+                        final txData = Map<String, dynamic>.from(decoded);
+                        await context
+                            .read<CustomerProvider>()
+                            .autoSaveCustomerFromPortalTransaction(txData);
+                        final auth = context.read<AuthProvider>();
+                        final customers = await FirebaseService()
+                            .getAllPelanggan(auth.registrationId);
+                        await context
+                            .read<TransactionProvider>()
+                            .syncAndSaveMyPertaminaTransactionsThisYear(
+                              customers,
+                            );
+                        debugPrint(
+                          '✅ [AUTO-CAPTURE] Pelanggan baru & transaksi manual berhasil tersimpan di Firestore!',
+                        );
+                      } catch (e, stackTrace) {
+                        debugPrint('❌ [AUTO-CAPTURE] $e\n$stackTrace');
+                      }
                     },
                   );
                   controller.addJavaScriptHandler(
@@ -592,12 +622,13 @@ class _WebViewScreenState extends State<WebViewScreen>
 (function() {
   if (window.__pcTransactionBridge) return;
   window.__pcTransactionBridge = true;
-  function forward(method, url, body) {
+  function forward(method, url, body, status) {
     if (String(method).toUpperCase() !== 'POST' || !url || !body) return;
-    if (url.indexOf('/general/v2/transactions') < 0 && url.indexOf('/general/v3/transactions') < 0) return;
+    if ((url.indexOf('/general/v2/transactions') < 0 && url.indexOf('/general/v3/transactions') < 0) ||
+        (status !== 200 && status !== 201)) return;
     try {
       var parsed = typeof body === 'string' ? JSON.parse(body) : body;
-      window.flutter_inappwebview.callHandler('myPertaminaTransaction', parsed);
+      window.flutter_inappwebview.callHandler('onMyPertaminaTransactionCaptured', JSON.stringify(parsed));
     } catch (_) {}
   }
   const originalFetch = window.fetch;
@@ -605,14 +636,14 @@ class _WebViewScreenState extends State<WebViewScreen>
     var method = (arguments[1] && arguments[1].method) || (input && input.method) || 'GET';
     return originalFetch.apply(this, arguments).then(function(response) {
       const clone=response.clone();
-      clone.text().then(function(body){ forward(method, response.url, body); });
+      clone.text().then(function(body){ forward(method, response.url, body, response.status); });
       return response;
     });
   };
   const originalOpen = XMLHttpRequest.prototype.open;
   const originalSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function(method, url) { this.__pcMethod=method; this.__pcUrl=url; return originalOpen.apply(this, arguments); };
-  XMLHttpRequest.prototype.send = function() { this.addEventListener('load', function(){ forward(this.__pcMethod, this.__pcUrl, this.responseText); }); return originalSend.apply(this, arguments); };
+  XMLHttpRequest.prototype.send = function() { this.addEventListener('load', function(){ forward(this.__pcMethod, this.__pcUrl, this.responseText, this.status); }); return originalSend.apply(this, arguments); };
 })();
 ''';
 

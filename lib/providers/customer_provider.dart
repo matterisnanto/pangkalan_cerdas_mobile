@@ -31,6 +31,10 @@ class CustomerProvider extends ChangeNotifier {
     });
   }
 
+  Future<void> autoSaveCustomerFromPortalTransaction(
+    Map<String, dynamic> txData,
+  ) => autoSaveCustomerFromPortal(txData);
+
   Future<void> autoSaveCustomerFromPortal(
     Map<String, dynamic> portalData,
   ) async {
