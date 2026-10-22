@@ -51,11 +51,20 @@ class _PelangganScreenState extends State<PelangganScreen> {
     super.dispose();
   }
 
-  void _showSnack(String msg, {bool isError = false}) {
+  // Centralized top notification entry point for every screen activity.
+  void showTopNotification(
+    BuildContext context,
+    String message, {
+    bool isError = false,
+  }) {
+    _showTopNotification(message, isError: isError);
+  }
+
+  void _showTopNotification(String message, {bool isError = false}) {
     if (!mounted) return;
     _topNotificationTimer?.cancel();
     setState(() {
-      _topNotificationMessage = msg;
+      _topNotificationMessage = message;
       _topNotificationIsError = isError;
     });
     _topNotificationTimer = Timer(
@@ -136,13 +145,17 @@ class _PelangganScreenState extends State<PelangganScreen> {
     try {
       final list = await _service.getAllPelanggan();
       if (list.isEmpty) {
-        _showSnack('Tidak ada data pelanggan untuk diekspor', isError: true);
+        showTopNotification(
+          context,
+          'Tidak ada data pelanggan untuk diekspor',
+          isError: true,
+        );
         return;
       }
       final path = await ExcelService.exportPelanggan(pelangganList: list);
-      _showSnack('Berhasil diekspor: $path');
+      _showTopNotification('Berhasil diekspor: $path');
     } catch (e) {
-      _showSnack('Gagal ekspor: $e', isError: true);
+      _showTopNotification('Gagal ekspor: $e', isError: true);
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }
@@ -158,13 +171,21 @@ class _PelangganScreenState extends State<PelangganScreen> {
       );
       final path = picked?.files.single.path;
       if (path == null) {
-        _showSnack('Pemilihan file dibatalkan', isError: true);
+        showTopNotification(
+          context,
+          'Pemilihan file dibatalkan',
+          isError: true,
+        );
         return;
       }
       if (!mounted) return;
       final auth = context.read<AuthProvider>();
       if (auth.registrationId.isEmpty) {
-        _showSnack('Profil pangkalan belum tersedia', isError: true);
+        showTopNotification(
+          context,
+          'Profil pangkalan belum tersedia',
+          isError: true,
+        );
         return;
       }
       final list = await ExcelService.importPelanggan(
@@ -172,7 +193,11 @@ class _PelangganScreenState extends State<PelangganScreen> {
         registrationId: auth.registrationId,
       );
       if (list.isEmpty) {
-        _showSnack('File .xlsx tidak memuat data yang valid', isError: true);
+        showTopNotification(
+          context,
+          'File .xlsx tidak memuat data yang valid',
+          isError: true,
+        );
         return;
       }
 
@@ -184,11 +209,12 @@ class _PelangganScreenState extends State<PelangganScreen> {
             customers: list,
             registrationId: auth.registrationId,
           );
-      _showSnack(
+      showTopNotification(
+        context,
         'Import selesai: ${result.verified} terverifikasi, ${result.failed} gagal',
       );
     } catch (e) {
-      _showSnack('Gagal import: $e', isError: true);
+      _showTopNotification('Gagal import: $e', isError: true);
     } finally {
       if (mounted) setState(() => _isImporting = false);
     }
@@ -205,13 +231,16 @@ class _PelangganScreenState extends State<PelangganScreen> {
           try {
             if (existing != null) {
               await _service.updatePelanggan(pelanggan);
-              _showSnack('Data pelanggan berhasil diperbarui');
+              showTopNotification(
+                context,
+                'Data pelanggan berhasil diperbarui',
+              );
             } else {
               await _service.addPelanggan(pelanggan);
-              _showSnack('Pelanggan berhasil ditambahkan');
+              _showTopNotification('Pelanggan berhasil ditambahkan');
             }
           } catch (e) {
-            _showSnack('Gagal menyimpan: $e', isError: true);
+            _showTopNotification('Gagal menyimpan: $e', isError: true);
           }
         },
       ),
@@ -284,7 +313,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
       } else {
         await _service.deletePelanggan(p.nik);
       }
-      _showSnack('Pelanggan telah dihapus');
+      _showTopNotification('Pelanggan telah dihapus');
     }
   }
 
@@ -758,11 +787,13 @@ class _PelangganScreenState extends State<PelangganScreen> {
                         await context
                             .read<CustomerProvider>()
                             .syncAllCustomersQuotaFromMyPertamina();
-                        _showSnack(
+                        showTopNotification(
+                          context,
                           'Sisa kuota seluruh pelanggan berhasil diperbarui!',
                         );
                       } catch (e) {
-                        _showSnack(
+                        showTopNotification(
+                          context,
                           e.toString().replaceFirst('Bad state: ', ''),
                           isError: true,
                         );
