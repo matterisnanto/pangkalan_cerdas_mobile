@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:developer' as developer;
 import '../models/pelanggan_model.dart';
 import '../services/mypertamina_api_service.dart';
@@ -259,7 +260,9 @@ class TransactionProvider extends ChangeNotifier {
             fullNik: '${item['fullNik'] ?? ''}',
             category: '${item['category'] ?? 'Rumah Tangga'}',
             total: _toInt(item['total']),
-            createdAt: DateTime.tryParse('${item['createdAt'] ?? ''}'),
+            createdAt: item['createdAt'] is Timestamp
+                ? (item['createdAt'] as Timestamp).toDate()
+                : DateTime.tryParse('${item['createdAt'] ?? ''}'),
             isEnriched:
                 item['isEnriched'] == true ||
                 item['isMatchedWithCustomer'] == true,

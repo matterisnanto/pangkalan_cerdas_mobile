@@ -47,6 +47,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadQueue();
       _loadLogs();
+      context.read<TransactionProvider>().loadSavedMyPertaminaTransactions();
     });
   }
 
@@ -274,8 +275,6 @@ class _TransaksiScreenState extends State<TransaksiScreen>
           ),
           body: Column(
             children: [
-              if (_tabController.index != 2)
-                _buildControlPanel(context, txQueue, cs),
               TabBar(
                 onTap: (_) => setState(() {}),
                 controller: _tabController,
@@ -301,8 +300,8 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildQueueTab(context, txQueue),
-                    _buildLogTab(context, txQueue),
+                    _buildQueueTabWithControls(context, txQueue, cs),
+                    _buildLogTabWithControls(context, txQueue, cs),
                     _buildMyPertaminaHistory(
                       context,
                       context.watch<TransactionProvider>(),
@@ -463,6 +462,32 @@ class _TransaksiScreenState extends State<TransaksiScreen>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildQueueTabWithControls(
+    BuildContext context,
+    TransactionQueueProvider txQueue,
+    ColorScheme cs,
+  ) {
+    return Column(
+      children: [
+        _buildControlPanel(context, txQueue, cs),
+        Expanded(child: _buildQueueTab(context, txQueue)),
+      ],
+    );
+  }
+
+  Widget _buildLogTabWithControls(
+    BuildContext context,
+    TransactionQueueProvider txQueue,
+    ColorScheme cs,
+  ) {
+    return Column(
+      children: [
+        _buildControlPanel(context, txQueue, cs),
+        Expanded(child: _buildLogTab(context, txQueue)),
+      ],
     );
   }
 
