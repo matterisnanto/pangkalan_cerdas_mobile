@@ -230,9 +230,7 @@ class TransactionProvider extends ChangeNotifier {
         authProvider.registrationId,
         data,
       );
-      await _firebase.deleteDuplicateMyPertaminaTransactions(
-        authProvider.registrationId,
-      );
+      await _firebase.autoCleanDuplicates(authProvider.registrationId);
       await loadSavedMyPertaminaTransactions(authProvider.registrationId);
       return data.length;
     } catch (e, stackTrace) {
@@ -259,9 +257,7 @@ class TransactionProvider extends ChangeNotifier {
       return;
     }
     final normalizedRegistrationId = registrationId.trim();
-    await _firebase.deleteDuplicateMyPertaminaTransactions(
-      normalizedRegistrationId,
-    );
+    await _firebase.autoCleanDuplicates(normalizedRegistrationId);
     final data = await _firebase.getMyPertaminaTransactions(
       normalizedRegistrationId,
     );
@@ -287,16 +283,6 @@ class TransactionProvider extends ChangeNotifier {
         )
         .toList();
     notifyListeners();
-  }
-
-  Future<int> cleanDuplicateMyPertaminaTransactions() async {
-    final registrationId = authProvider.registrationId.trim();
-    if (registrationId.isEmpty) return 0;
-    final removed = await _firebase.deleteDuplicateMyPertaminaTransactions(
-      registrationId,
-    );
-    await loadSavedMyPertaminaTransactions(registrationId);
-    return removed;
   }
 
   static bool _nikMatches(String nik, String masked) {

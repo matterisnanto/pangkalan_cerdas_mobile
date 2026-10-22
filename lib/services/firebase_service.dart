@@ -238,15 +238,21 @@ class FirebaseService {
     }
   }
 
-  Future<int> deleteDuplicateMyPertaminaTransactions(
-    String registrationId,
-  ) async {
-    final snapshot = await _myPertaminaTransactionsCol(registrationId).get();
+  Future<int> autoCleanDuplicates(String registrationId) async {
+    final normalizedRegistrationId = registrationId.trim();
+    if (normalizedRegistrationId.isEmpty) return 0;
+    final snapshot = await _myPertaminaTransactionsCol(
+      normalizedRegistrationId,
+    ).get();
     final grouped =
         <String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>{};
     for (final doc in snapshot.docs) {
       final data = doc.data();
-      final key = '${data['nationalityId'] ?? ''}|${data['createdAt'] ?? ''}';
+      final storedRegistrationId =
+          data['registrationId']?.toString() ?? normalizedRegistrationId;
+      final nationalityId = data['nationalityId']?.toString() ?? '';
+      final createdAt = data['createdAt']?.toString() ?? '';
+      final key = '$storedRegistrationId|$nationalityId|$createdAt';
       grouped.putIfAbsent(key, () => []).add(doc);
     }
     final duplicates = grouped.values
