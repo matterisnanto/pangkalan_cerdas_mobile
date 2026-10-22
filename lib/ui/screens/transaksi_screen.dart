@@ -7,6 +7,8 @@ import '../../models/mypertamina_models.dart';
 import '../../models/pelanggan.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/transaction_queue_provider.dart';
+import '../../providers/transaction_provider.dart';
+import '../../models/pelanggan_model.dart';
 import '../../services/automation_service.dart';
 import '../../services/firebase_service.dart';
 import '../../services/mypertamina_api_service.dart';
@@ -34,6 +36,9 @@ class _TransaksiScreenState extends State<TransaksiScreen>
   bool _loadingLogs = true;
   bool _tokenExpired = false;
   String? _errorMessage;
+  int _historyTab = 0;
+  String _myPertaminaSearch = '';
+  final _myPertaminaSearchController = TextEditingController();
 
   @override
   void initState() {
@@ -48,6 +53,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _myPertaminaSearchController.dispose();
     super.dispose();
   }
 
@@ -119,8 +125,12 @@ class _TransaksiScreenState extends State<TransaksiScreen>
         _errorMessage ??= 'Data pelanggan gagal dimuat: $e';
       }
       try {
-        final report =
-            await MyPertaminaApiService(auth.apiClient).fetchReport();
+        await context
+            .read<TransactionProvider>()
+            .fetchAndEnrichMyPertaminaTransactions(customers);
+        final report = await MyPertaminaApiService(
+          auth.apiClient,
+        ).fetchReport();
         final apiLogs = report.map(_reportToLog).toList();
         final existingIds = logs.map((l) => l.id).toSet();
         for (final apiLog in apiLogs) {
@@ -161,18 +171,18 @@ class _TransaksiScreenState extends State<TransaksiScreen>
   }
 
   LogTransaksi _reportToLog(TransactionReceiptModel report) => LogTransaksi(
-        id: report.transactionId,
-        nik: report.nik,
-        nama: report.customerName,
-        kategori: report.category,
-        jumlahTabung: report.quantity,
-        status: report.status.isEmpty ? 'BERHASIL' : report.status,
-        refNo: report.transactionUniqueKey.isEmpty
-            ? null
-            : report.transactionUniqueKey,
-        registrationId: context.read<AuthProvider>().registrationId,
-        timestamp: DateTime.tryParse(report.createdAt) ?? DateTime.now(),
-      );
+    id: report.transactionId,
+    nik: report.nik,
+    nama: report.customerName,
+    kategori: report.category,
+    jumlahTabung: report.quantity,
+    status: report.status.isEmpty ? 'BERHASIL' : report.status,
+    refNo: report.transactionUniqueKey.isEmpty
+        ? null
+        : report.transactionUniqueKey,
+    registrationId: context.read<AuthProvider>().registrationId,
+    timestamp: DateTime.tryParse(report.createdAt) ?? DateTime.now(),
+  );
 
   void _startQueue() {
     final queue = context.read<TransactionQueueProvider>();
@@ -216,7 +226,10 @@ class _TransaksiScreenState extends State<TransaksiScreen>
     queue.setQueue(failedCustomers);
     queue.executeQueue();
     await _loadLogs();
-    if (mounted) _showSnack('${failedCustomers.length} transaksi gagal dimasukkan ke antrean.');
+    if (mounted)
+      _showSnack(
+        '${failedCustomers.length} transaksi gagal dimasukkan ke antrean.',
+      );
   }
 
   void _showSnack(String message) {
@@ -307,23 +320,23 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                 isRunning
                     ? Icons.play_circle_fill
                     : isPaused
-                        ? Icons.pause_circle_filled
-                        : Icons.radio_button_checked,
+                    ? Icons.pause_circle_filled
+                    : Icons.radio_button_checked,
                 size: 18,
                 color: isRunning
                     ? cs.primary
                     : isPaused
-                        ? Colors.orange
-                        : cs.onSurfaceVariant,
+                    ? Colors.orange
+                    : cs.onSurfaceVariant,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Progres: $processed / $total Diproses  •  '
                   '$success Sukses  •  $fail Gagal',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -355,8 +368,8 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                 icon: Icons.play_circle_outline,
                 label: 'Lanjutkan',
                 color: Colors.teal,
-                onPressed: isPaused ||
-                        txQueue.status == QueueStatus.tokenExpired
+                onPressed:
+                    isPaused || txQueue.status == QueueStatus.tokenExpired
                     ? _resumeQueue
                     : null,
               ),
@@ -443,9 +456,11 @@ class _TransaksiScreenState extends State<TransaksiScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.inbox_outlined,
-                size: 64,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(height: 12),
             Text(
               'Antrean kosong',
@@ -523,8 +538,9 @@ class _TransaksiScreenState extends State<TransaksiScreen>
 
     final priorityColor = entry.aman ? Colors.green : Colors.amber.shade800;
     final priorityLabel = entry.aman ? '🟢 Zona Aman' : '🟡 Kepepet';
-    final priorityTooltip =
-        entry.aman ? '>= 2 hari sejak terakhir' : '< 2 hari sejak terakhir';
+    final priorityTooltip = entry.aman
+        ? '>= 2 hari sejak terakhir'
+        : '< 2 hari sejak terakhir';
 
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 10),
@@ -574,7 +590,9 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: p.displayKategori == 'UMKM'
                             ? Colors.indigo.withValues(alpha: .12)
@@ -606,7 +624,9 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                       message: priorityTooltip,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: priorityColor.withValues(alpha: .12),
                           borderRadius: BorderRadius.circular(8),
@@ -642,10 +662,8 @@ class _TransaksiScreenState extends State<TransaksiScreen>
     );
   }
 
-  Widget _buildLogTab(
-    BuildContext context,
-    TransactionQueueProvider txQueue,
-  ) {
+  Widget _buildLogTab(BuildContext context, TransactionQueueProvider txQueue) {
+    final transactionProvider = context.watch<TransactionProvider>();
     if (_loadingLogs) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -682,8 +700,11 @@ class _TransaksiScreenState extends State<TransaksiScreen>
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              Icon(Icons.error_outline,
-                  size: 20, color: Theme.of(context).colorScheme.error),
+              Icon(
+                Icons.error_outline,
+                size: 20,
+                color: Theme.of(context).colorScheme.error,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -702,9 +723,11 @@ class _TransaksiScreenState extends State<TransaksiScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.history_outlined,
-                size: 64,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            Icon(
+              Icons.history_outlined,
+              size: 64,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(height: 12),
             Text(
               'Belum ada riwayat transaksi',
@@ -715,16 +738,132 @@ class _TransaksiScreenState extends State<TransaksiScreen>
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadLogs,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-        itemCount: banners.length + _logs.length,
-        itemBuilder: (context, index) {
-          if (index < banners.length) return banners[index];
-          final logIndex = index - banners.length;
-          return _buildLogCard(context, _logs[logIndex], txQueue);
-        },
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: SegmentedButton<int>(
+            segments: const [
+              ButtonSegment(value: 0, label: Text('Transaksi Lokal')),
+              ButtonSegment(value: 1, label: Text('Riwayat MyPertamina')),
+            ],
+            selected: {_historyTab},
+            onSelectionChanged: (value) =>
+                setState(() => _historyTab = value.first),
+          ),
+        ),
+        if (_historyTab == 1)
+          Expanded(
+            child: _buildMyPertaminaHistory(context, transactionProvider),
+          )
+        else
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadLogs,
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                itemCount: banners.length + _logs.length,
+                itemBuilder: (context, index) {
+                  if (index < banners.length) return banners[index];
+                  final logIndex = index - banners.length;
+                  return _buildLogCard(context, _logs[logIndex], txQueue);
+                },
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMyPertaminaHistory(
+    BuildContext context,
+    TransactionProvider provider,
+  ) {
+    final query = _myPertaminaSearch.trim().toUpperCase();
+    final items = provider.transactions
+        .where(
+          (item) =>
+              query.isEmpty ||
+              item.name.toUpperCase().contains(query) ||
+              item.fullNik.contains(query) ||
+              item.maskedNik.contains(query),
+        )
+        .toList();
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: TextField(
+            controller: _myPertaminaSearchController,
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search),
+              hintText: 'Cari nama atau NIK',
+            ),
+            onChanged: (value) => setState(() => _myPertaminaSearch = value),
+          ),
+        ),
+        if (provider.isLoading) const LinearProgressIndicator(),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+            itemCount: items.length,
+            itemBuilder: (context, index) =>
+                _buildMyPertaminaCard(context, items[index]),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMyPertaminaCard(
+    BuildContext context,
+    EnrichedMyPertaminaTransaction item,
+  ) {
+    final date = item.createdAt == null
+        ? '-'
+        : DateFormat('dd MMM yyyy, HH:mm').format(item.createdAt!.toLocal());
+    final nik = item.isEnriched ? item.fullNik : item.maskedNik;
+    return GlassCard(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              Text(date, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text('NIK: $nik'),
+              Chip(
+                label: Text(
+                  item.isEnriched ? 'NIK Terverifikasi' : 'MyPertamina',
+                ),
+                backgroundColor: item.isEnriched
+                    ? Colors.green.shade100
+                    : Colors.grey.shade200,
+              ),
+              if (!item.isEnriched)
+                TextButton(
+                  onPressed: () {},
+                  child: const Text('+ Simpan Pelanggan'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text('${item.category} • ${item.total} tabung LPG 3kg'),
+        ],
       ),
     );
   }
@@ -772,9 +911,12 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: Pelanggan.normalizeKategori(log.kategori) ==
+                            color:
+                                Pelanggan.normalizeKategori(log.kategori) ==
                                     'UMKM'
                                 ? Colors.indigo.withValues(alpha: .12)
                                 : Colors.teal.withValues(alpha: .12),
@@ -787,9 +929,9 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                               fontWeight: FontWeight.w600,
                               color:
                                   Pelanggan.normalizeKategori(log.kategori) ==
-                                          'UMKM'
-                                      ? Colors.indigo
-                                      : Colors.teal.shade700,
+                                      'UMKM'
+                                  ? Colors.indigo
+                                  : Colors.teal.shade700,
                             ),
                           ),
                         ),
@@ -804,8 +946,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(8),
@@ -836,9 +977,9 @@ class _TransaksiScreenState extends State<TransaksiScreen>
   ) {
     final customer = _customerMap[log.nik];
     final sisaKuota = customer?.sisaKuotaHarian;
-    final formattedTime = DateFormat('dd MMM yyyy, HH:mm:ss').format(
-      log.timestamp,
-    );
+    final formattedTime = DateFormat(
+      'dd MMM yyyy, HH:mm:ss',
+    ).format(log.timestamp);
 
     return Padding(
       padding: const EdgeInsets.only(left: 32),
@@ -848,8 +989,11 @@ class _TransaksiScreenState extends State<TransaksiScreen>
           if (sisaKuota != null)
             Row(
               children: [
-                Icon(Icons.local_gas_station,
-                    size: 14, color: cs.onSurfaceVariant),
+                Icon(
+                  Icons.local_gas_station,
+                  size: 14,
+                  color: cs.onSurfaceVariant,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   'Sisa Kuota: $sisaKuota Tabung',
@@ -868,38 +1012,35 @@ class _TransaksiScreenState extends State<TransaksiScreen>
               const SizedBox(width: 4),
               Text(
                 formattedTime,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: cs.onSurfaceVariant,
-                ),
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
               ),
             ],
           ),
           const SizedBox(height: 2),
           Row(
             children: [
-              Icon(Icons.inventory_2_outlined,
-                  size: 14, color: cs.onSurfaceVariant),
+              Icon(
+                Icons.inventory_2_outlined,
+                size: 14,
+                color: cs.onSurfaceVariant,
+              ),
               const SizedBox(width: 4),
               Text(
                 '${log.jumlahTabung} tabung',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: cs.onSurfaceVariant,
-                ),
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
               ),
               if (log.refNo != null && log.refNo!.isNotEmpty) ...[
                 const SizedBox(width: 12),
-                Icon(Icons.receipt_outlined,
-                    size: 14, color: cs.onSurfaceVariant),
+                Icon(
+                  Icons.receipt_outlined,
+                  size: 14,
+                  color: cs.onSurfaceVariant,
+                ),
                 const SizedBox(width: 4),
                 Flexible(
                   child: Text(
                     'Struk: ${log.refNo}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

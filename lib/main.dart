@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/customer_provider.dart';
 import 'providers/transaction_queue_provider.dart';
+import 'providers/transaction_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/notification_service.dart';
 import 'ui/screens/pelanggan_screen.dart';
@@ -54,13 +55,18 @@ class PangkalanCerdasApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProxyProvider<AuthProvider, CustomerProvider>(
-          create: (context) => CustomerProvider(
-            authProvider: context.read<AuthProvider>(),
-          ),
+          create: (context) =>
+              CustomerProvider(authProvider: context.read<AuthProvider>()),
           update: (_, auth, previous) =>
               previous ?? CustomerProvider(authProvider: auth),
         ),
         ChangeNotifierProvider(create: (_) => TransactionQueueProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, TransactionProvider>(
+          create: (context) =>
+              TransactionProvider(authProvider: context.read<AuthProvider>()),
+          update: (_, auth, previous) =>
+              previous ?? TransactionProvider(authProvider: auth),
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (_, theme, child) => MaterialApp(
