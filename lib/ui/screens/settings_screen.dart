@@ -12,6 +12,87 @@ import '../widgets/glass_card.dart';
 import '../widgets/apple_background.dart';
 import '../widgets/theme_toggle_button.dart';
 
+class PureAccountDialog extends StatefulWidget {
+  final Map<String, String>? initialAccount;
+
+  const PureAccountDialog({super.key, this.initialAccount});
+
+  @override
+  State<PureAccountDialog> createState() => _PureAccountDialogState();
+}
+
+class _PureAccountDialogState extends State<PureAccountDialog> {
+  late final TextEditingController _name;
+  late final TextEditingController _username;
+  late final TextEditingController _password;
+
+  @override
+  void initState() {
+    super.initState();
+    final account = widget.initialAccount;
+    _name = TextEditingController(text: account?['name'] ?? '');
+    _username = TextEditingController(text: account?['username'] ?? '');
+    _password = TextEditingController(text: account?['password'] ?? '');
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _username.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(
+      widget.initialAccount == null
+          ? 'Tambah Akun Pangkalan'
+          : 'Edit Akun Pangkalan',
+    ),
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _name,
+            decoration: const InputDecoration(labelText: 'Nama Pangkalan'),
+          ),
+          TextField(
+            controller: _username,
+            decoration: const InputDecoration(
+              labelText: 'Username / Email / No HP',
+            ),
+          ),
+          TextField(
+            controller: _password,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Password'),
+          ),
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Batal'),
+      ),
+      FilledButton(
+        onPressed: () {
+          final account = {
+            'name': _name.text.trim(),
+            'username': _username.text.trim(),
+            'password': _password.text,
+          };
+          if (account.values.any((value) => value.isEmpty)) return;
+          Navigator.pop(context, account);
+        },
+        child: const Text('Simpan'),
+      ),
+    ],
+  );
+}
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
   @override
@@ -49,73 +130,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _editAccount([int? index]) async {
-    final account = index == null ? null : _accounts[index];
-    final name = TextEditingController(text: account?['name']);
-    final username = TextEditingController(text: account?['username']);
-    final password = TextEditingController(text: account?['password']);
-    final authProvider = context.read<AuthProvider>();
-    final messengerContext = context;
     final result = await showDialog<Map<String, String>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          index == null ? 'Tambah Akun Pangkalan' : 'Edit Akun Pangkalan',
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: name,
-                decoration: const InputDecoration(labelText: 'Nama Pangkalan'),
-              ),
-              TextField(
-                controller: username,
-                decoration: const InputDecoration(
-                  labelText: 'Username / Email / No HP',
-                ),
-              ),
-              TextField(
-                controller: password,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, {
-              'name': name.text.trim(),
-              'username': username.text.trim(),
-              'password': password.text,
-            }),
-            child: const Text('Simpan'),
-          ),
-        ],
+      builder: (_) => PureAccountDialog(
+        initialAccount: index == null ? null : _accounts[index],
       ),
     );
-    name.dispose();
-    username.dispose();
-    password.dispose();
-    if (result == null || result.values.any((value) => value.isEmpty)) return;
-    setState(() {
-      if (index == null) {
-        _accounts.add(result);
-      } else {
-        _accounts[index] = result;
-      }
-    });
-    await authProvider.saveAccountWithoutNotify(_accounts);
+    if (result == null || !mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final updatedAccounts = [..._accounts];
+    if (index == null) {
+      updatedAccounts.add(result);
+    } else {
+      updatedAccounts[index] = result;
+    }
+    await authProvider.savePangkalanAccount(updatedAccounts);
     if (!mounted) return;
+    setState(() => _accounts = updatedAccounts);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (messengerContext.mounted) {
-        authProvider.refreshAccountList();
-        ScaffoldMessenger.of(messengerContext).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Akun pangkalan berhasil disimpan!')),
         );
       }
