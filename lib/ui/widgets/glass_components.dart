@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
-import 'glass_card.dart';
 
 class MinimalAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;

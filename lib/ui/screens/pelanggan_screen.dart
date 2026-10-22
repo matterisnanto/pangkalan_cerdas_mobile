@@ -8,7 +8,6 @@ import '../../services/firebase_service.dart';
 import '../../services/batch_verification_service.dart';
 import '../../services/mypertamina_api_service.dart';
 import '../../providers/auth_provider.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/pelanggan_card.dart';
 import '../widgets/pelanggan_form_dialog.dart';
 import '../widgets/pelanggan_detail_modal.dart';
@@ -87,6 +86,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
         _showSnack('Pemilihan file dibatalkan', isError: true);
         return;
       }
+      if (!mounted) return;
       final auth = context.read<AuthProvider>();
       if (auth.registrationId.isEmpty) {
         _showSnack('Profil pangkalan belum tersedia', isError: true);
@@ -143,6 +143,66 @@ class _PelangganScreenState extends State<PelangganScreen> {
     );
   }
 
+  Future<void> _confirmDeletePelanggan(Pelanggan p) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dialogBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dCtx) => AlertDialog(
+        backgroundColor: dialogBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Hapus Pelanggan?',
+          style: TextStyle(
+            color: textPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+          ),
+        ),
+        content: Text(
+          'Yakin ingin menghapus ${p.nama} (${p.nik})? Data yang dihapus tidak dapat dipulihkan.',
+          style: TextStyle(color: textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dCtx, false),
+            child: Text(
+              'Batal',
+              style: TextStyle(color: textSecondary, fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+            onPressed: () => Navigator.pop(dCtx, true),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      if (p.id != null) {
+        await _service.deletePelanggan(p.id!);
+      } else {
+        await _service.deletePelanggan(p.nik);
+      }
+      _showSnack('Pelanggan telah dihapus');
+    }
+  }
+
   void _openDetailSheet(Pelanggan p) {
     showModalBottomSheet(
       context: context,
@@ -155,62 +215,40 @@ class _PelangganScreenState extends State<PelangganScreen> {
           _openFormDialog(existing: p);
         },
         onDelete: () async {
-          final confirm = await showDialog<bool>(
-            context: context,
-            builder: (dCtx) => AlertDialog(
-              backgroundColor: const Color(0xFF1E1B4B),
-              title: const Text(
-                'Hapus Pelanggan?',
-                style: TextStyle(color: Colors.white),
-              ),
-              content: Text(
-                'Yakin ingin menghapus ${p.nama} (${p.nik})?',
-                style: const TextStyle(color: Colors.white70),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dCtx, false),
-                  child: const Text('Batal'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  onPressed: () => Navigator.pop(dCtx, true),
-                  child: const Text(
-                    'Hapus',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          );
-          if (confirm == true) {
-            if (ctx.mounted) Navigator.pop(ctx);
-            if (p.id != null) {
-              await _service.deletePelanggan(p.id!);
-            } else {
-              await _service.deletePelanggan(p.nik);
-            }
-            _showSnack('Pelanggan telah dihapus');
-          }
+          Navigator.pop(ctx);
+          await _confirmDeletePelanggan(p);
         },
       ),
     );
   }
 
-  Widget _filterChip(String label) {
+  Widget _filterChip(
+    String label, {
+    required bool isDark,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
     final selected = _selectedKategori == label;
+    final chipBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final chipBorder = isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1);
+
     return ChoiceChip(
       label: Text(label),
       selected: selected,
       onSelected: (_) => setState(() => _selectedKategori = label),
-      selectedColor: const Color(0xFF00AA5B),
-      backgroundColor: Colors.white,
+      selectedColor: const Color(0xFF0063F7),
+      backgroundColor: chipBg,
       labelStyle: TextStyle(
-        color: selected ? Colors.white : Colors.black87,
-        fontWeight: FontWeight.w600,
+        color: selected ? Colors.white : textSecondary,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
         fontSize: 12,
       ),
-      shape: const StadiumBorder(side: BorderSide(color: Color(0xFFE0E0E0))),
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: selected ? const Color(0xFF0063F7) : chipBorder,
+          width: 1.1,
+        ),
+      ),
     );
   }
 
@@ -218,42 +256,51 @@ class _PelangganScreenState extends State<PelangganScreen> {
     required IconData icon,
     required String tooltip,
     required VoidCallback onTap,
+    required bool isDark,
+    required Color textPrimary,
     bool loading = false,
   }) {
+    final btnBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final btnBorder = isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1);
+
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white.withOpacity(0.12),
+        color: btnBg,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: loading ? null : onTap,
           child: Container(
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.25)),
+              border: Border.all(color: btnBorder),
             ),
             child: loading
-                ? const Center(
+                ? Center(
                     child: SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: textPrimary,
                       ),
                     ),
                   )
-                : Icon(icon, color: Colors.white, size: 18),
+                : Icon(icon, color: textPrimary, size: 19),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar({
+    required bool isDark,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
@@ -261,58 +308,41 @@ class _PelangganScreenState extends State<PelangganScreen> {
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
                 'Data Pelanggan',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: textPrimary,
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,
                 ),
               ),
-              SizedBox(height: 2),
+              const SizedBox(height: 2),
               Text(
                 'Master data & kuota LPG 3Kg',
-                style: TextStyle(color: Colors.white60, fontSize: 12),
+                style: TextStyle(color: textSecondary, fontSize: 12),
               ),
             ],
           ),
           Row(
             children: [
               _iconButton(
-                icon: Icons.upload_file,
-                tooltip: 'Import Excel',
+                icon: Icons.upload_file_outlined,
+                tooltip: 'Import Excel (.xlsx)',
                 loading: _isImporting,
                 onTap: _handleImport,
+                isDark: isDark,
+                textPrimary: textPrimary,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               _iconButton(
-                icon: Icons.download,
-                tooltip: 'Ekspor Excel',
+                icon: Icons.download_outlined,
+                tooltip: 'Ekspor Excel (.xlsx)',
                 loading: _isExporting,
                 onTap: _handleExport,
-              ),
-              const SizedBox(width: 6),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF06B6D4),
-                  foregroundColor: Colors.black,
-                  elevation: 4,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text(
-                  'Tambah',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                ),
-                onPressed: () => _openFormDialog(),
+                isDark: isDark,
+                textPrimary: textPrimary,
               ),
             ],
           ),
@@ -321,25 +351,51 @@ class _PelangganScreenState extends State<PelangganScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar({
+    required bool isDark,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
+    final searchBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final searchBorder = isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: TextField(
         controller: _searchCtrl,
+        style: TextStyle(
+          color: textPrimary,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
         decoration: InputDecoration(
           hintText: 'Cari NIK atau Nama...',
-          prefixIcon: const Icon(Icons.search),
+          hintStyle: TextStyle(
+            color: textSecondary.withValues(alpha: 0.7),
+            fontSize: 14,
+          ),
+          prefixIcon: Icon(Icons.search, color: textSecondary, size: 20),
           suffixIcon: _searchQuery.isEmpty
               ? null
               : IconButton(
-                  icon: const Icon(Icons.clear),
+                  icon: Icon(Icons.clear, color: textSecondary, size: 18),
                   onPressed: _searchCtrl.clear,
                 ),
           filled: true,
-          fillColor: const Color(0xFFF1F3F5),
+          fillColor: searchBg,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide(color: searchBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide(color: searchBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: const BorderSide(color: Color(0xFF0063F7), width: 1.5),
           ),
         ),
       ),
@@ -348,22 +404,63 @@ class _PelangganScreenState extends State<PelangganScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openFormDialog(),
+        backgroundColor: const Color(0xFF0063F7),
+        elevation: 4,
+        icon: const Icon(Icons.person_add_alt_1, color: Colors.white, size: 20),
+        label: const Text(
+          'Tambah Pelanggan',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+        ),
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildTopBar(),
-            _buildSearchBar(),
+            _buildTopBar(
+              isDark: isDark,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
+            ),
+            _buildSearchBar(
+              isDark: isDark,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 children: [
-                  _filterChip('Semua'),
+                  _filterChip(
+                    'Semua',
+                    isDark: isDark,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                  ),
                   const SizedBox(width: 8),
-                  _filterChip('Rumah Tangga'),
+                  _filterChip(
+                    'Rumah Tangga',
+                    isDark: isDark,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                  ),
                   const SizedBox(width: 8),
-                  _filterChip('UMKM'),
+                  _filterChip(
+                    'UMKM',
+                    isDark: isDark,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                  ),
                 ],
               ),
             ),
@@ -377,17 +474,26 @@ class _PelangganScreenState extends State<PelangganScreen> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
                       child: CircularProgressIndicator(
-                        color: Color(0xFF06B6D4),
+                        color: Color(0xFF0063F7),
                       ),
                     );
                   }
+                  final emptyCardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+                  final emptyCardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
                   if (snapshot.hasError) {
                     return Center(
-                      child: GlassCard(
+                      child: Container(
                         margin: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: emptyCardBg,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFDC2626)),
+                        ),
                         child: Text(
                           'Terjadi kesalahan: ${snapshot.error}',
-                          style: const TextStyle(color: Colors.redAccent),
+                          style: const TextStyle(color: Color(0xFFDC2626)),
                         ),
                       ),
                     );
@@ -395,36 +501,41 @@ class _PelangganScreenState extends State<PelangganScreen> {
                   final list = snapshot.data ?? [];
                   if (list.isEmpty) {
                     return Center(
-                      child: GlassCard(
+                      child: Container(
                         margin: const EdgeInsets.all(24),
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(28),
+                        decoration: BoxDecoration(
+                          color: emptyCardBg,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: emptyCardBorder),
+                        ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.people_outline,
-                              size: 48,
-                              color: Colors.white.withOpacity(0.4),
+                              size: 52,
+                              color: textSecondary.withValues(alpha: 0.5),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 14),
                             Text(
                               _searchQuery.isNotEmpty
                                   ? 'Tidak ada pelanggan ditemukan'
                                   : 'Belum ada data pelanggan',
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
+                              style: TextStyle(
+                                color: textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Impor dari Excel (.xlsx) atau tambahkan secara manual.',
+                              'Impor dari Excel (.xlsx) atau tekan tombol Tambah Pelanggan di bawah.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
-                                fontSize: 12,
+                                color: textSecondary,
+                                fontSize: 13,
                               ),
                             ),
                           ],
@@ -433,16 +544,16 @@ class _PelangganScreenState extends State<PelangganScreen> {
                     );
                   }
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                     itemCount: list.length,
                     itemBuilder: (context, idx) {
                       final p = list[idx];
                       return PelangganCard(
                         pelanggan: p,
                         onTap: () => _openDetailSheet(p),
+                        onEdit: () => _openFormDialog(existing: p),
+                        onDelete: () => _confirmDeletePelanggan(p),
+                        onHistory: () => _openDetailSheet(p),
                       );
                     },
                   );

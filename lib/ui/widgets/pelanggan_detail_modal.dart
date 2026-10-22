@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import '../../models/pelanggan_model.dart';
 import '../../models/log_transaksi.dart';
 import '../../services/pelanggan_service.dart';
-import 'glass_card.dart';
 
 class PelangganDetailModal extends StatelessWidget {
   final Pelanggan pelanggan;
@@ -19,19 +18,34 @@ class PelangganDetailModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isUmkm = pelanggan.kategori == 'UMKM';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final modalBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final modalBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    final isUmkm = pelanggan.kategori.toLowerCase().contains('umkm') ||
+        pelanggan.kategori.toLowerCase().contains('usaha');
     final service = PelangganService();
 
     return Container(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
-      child: GlassCard(
-        margin: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-        padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+      decoration: BoxDecoration(
+        color: modalBg,
         borderRadius: BorderRadius.circular(24),
-        backgroundColor: const Color(0xFF1E1B4B).withOpacity(0.95),
-        borderColor: Colors.white.withOpacity(0.35),
+        border: Border.all(color: modalBorder, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -45,8 +59,8 @@ class PelangganDetailModal extends StatelessWidget {
                     children: [
                       Text(
                         pelanggan.nama,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: textPrimary,
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.4,
@@ -55,17 +69,18 @@ class PelangganDetailModal extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         'NIK: ${pelanggan.nik}',
-                        style: const TextStyle(
-                          color: Colors.white70,
+                        style: TextStyle(
+                          color: textSecondary,
                           fontSize: 13,
                           fontFamily: 'monospace',
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white70),
+                  icon: Icon(Icons.close, color: textSecondary),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -76,18 +91,18 @@ class PelangganDetailModal extends StatelessWidget {
               runSpacing: 8,
               children: [
                 _badge(
-                  icon: Icons.category_outlined,
+                  icon: isUmkm ? Icons.storefront : Icons.home,
                   text: pelanggan.kategori,
                   color: isUmkm
-                      ? const Color(0xFFA855F7)
-                      : const Color(0xFF06B6D4),
+                      ? const Color(0xFF8B5CF6)
+                      : const Color(0xFF0063F7),
                 ),
                 if (pelanggan.tanggalLahir != null &&
                     pelanggan.tanggalLahir!.isNotEmpty)
                   _badge(
                     icon: Icons.cake_outlined,
                     text: pelanggan.tanggalLahir!,
-                    color: const Color(0xFF38BDF8),
+                    color: const Color(0xFF0284C7),
                   ),
               ],
             ),
@@ -95,17 +110,17 @@ class PelangganDetailModal extends StatelessWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.location_on_outlined,
-                    color: Colors.white60,
+                    color: textSecondary,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       pelanggan.alamat!,
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -113,15 +128,15 @@ class PelangganDetailModal extends StatelessWidget {
                 ],
               ),
             ],
-            const Divider(color: Colors.white24, height: 24),
+            Divider(color: modalBorder, height: 24),
             Row(
-              children: const [
-                Icon(Icons.history, color: Color(0xFF06B6D4), size: 18),
-                SizedBox(width: 8),
+              children: [
+                const Icon(Icons.history, color: Color(0xFF0063F7), size: 18),
+                const SizedBox(width: 8),
                 Text(
                   'Riwayat Transaksi LPG 3Kg',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
@@ -136,7 +151,7 @@ class PelangganDetailModal extends StatelessWidget {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
                       child: CircularProgressIndicator(
-                        color: Color(0xFF06B6D4),
+                        color: Color(0xFF0063F7),
                       ),
                     );
                   }
@@ -149,7 +164,7 @@ class PelangganDetailModal extends StatelessWidget {
                           'Belum ada riwayat transaksi LPG untuk pelanggan ini',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
+                            color: textSecondary,
                             fontSize: 13,
                           ),
                         ),
@@ -158,34 +173,40 @@ class PelangganDetailModal extends StatelessWidget {
                   }
 
                   final df = DateFormat('dd MMM yyyy, HH:mm');
+                  final logBg = isDark
+                      ? const Color(0xFF0F172A)
+                      : const Color(0xFFF8FAFC);
+
                   return ListView.separated(
                     shrinkWrap: true,
                     itemCount: logs.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 6),
+                    separatorBuilder: (_, _) => const SizedBox(height: 6),
                     itemBuilder: (context, idx) {
                       final log = logs[idx];
                       final isSuccess = log.isSuccess;
+                      final statusColor = isSuccess
+                          ? (isDark ? const Color(0xFF34D399) : const Color(0xFF059669))
+                          : (isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626));
+
                       return Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 8,
+                          vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.06),
+                          color: logBg,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: isSuccess
-                                ? Colors.green.withOpacity(0.3)
-                                : Colors.red.withOpacity(0.3),
+                                ? statusColor.withValues(alpha: 0.3)
+                                : statusColor.withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(
                           children: [
                             Icon(
                               isSuccess ? Icons.check_circle : Icons.error,
-                              color: isSuccess
-                                  ? Colors.greenAccent
-                                  : Colors.redAccent,
+                              color: statusColor,
                               size: 18,
                             ),
                             const SizedBox(width: 10),
@@ -196,9 +217,7 @@ class PelangganDetailModal extends StatelessWidget {
                                   Text(
                                     '${log.jumlahTabung} Tabung • ${log.status}',
                                     style: TextStyle(
-                                      color: isSuccess
-                                          ? Colors.greenAccent
-                                          : Colors.redAccent,
+                                      color: statusColor,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
                                     ),
@@ -207,8 +226,8 @@ class PelangganDetailModal extends StatelessWidget {
                                       log.pesanError!.isNotEmpty)
                                     Text(
                                       log.pesanError!,
-                                      style: const TextStyle(
-                                        color: Colors.white70,
+                                      style: TextStyle(
+                                        color: textSecondary,
                                         fontSize: 11,
                                       ),
                                       maxLines: 1,
@@ -217,7 +236,7 @@ class PelangganDetailModal extends StatelessWidget {
                                   Text(
                                     df.format(log.timestamp),
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.4),
+                                      color: textSecondary.withValues(alpha: 0.7),
                                       fontSize: 11,
                                     ),
                                   ),
@@ -232,15 +251,16 @@ class PelangganDetailModal extends StatelessWidget {
                 },
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.redAccent,
-                      side: BorderSide(
-                        color: Colors.redAccent.withOpacity(0.5),
+                      foregroundColor: const Color(0xFFDC2626),
+                      side: const BorderSide(
+                        color: Color(0xFFDC2626),
+                        width: 1.2,
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -256,17 +276,21 @@ class PelangganDetailModal extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF06B6D4),
-                      foregroundColor: Colors.black,
+                      backgroundColor: const Color(0xFF0063F7),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    icon: const Icon(Icons.edit, size: 18),
+                    icon: const Icon(Icons.edit, size: 18, color: Colors.white),
                     label: const Text(
                       'Edit Data',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
                     ),
                     onPressed: onEdit,
                   ),
@@ -287,9 +311,9 @@ class PelangganDetailModal extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
