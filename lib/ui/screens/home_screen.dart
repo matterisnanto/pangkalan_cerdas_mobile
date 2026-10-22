@@ -232,7 +232,7 @@ class _TokenPill extends StatelessWidget {
     margin: const EdgeInsets.symmetric(vertical: 12),
     padding: const EdgeInsets.symmetric(horizontal: 10),
     decoration: BoxDecoration(
-      color: (active ? Colors.green : Colors.red).withOpacity(.12),
+      color: (active ? Colors.green : Colors.red).withValues(alpha: .12),
       borderRadius: BorderRadius.circular(20),
     ),
     child: Text(

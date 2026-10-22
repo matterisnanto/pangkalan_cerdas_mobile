@@ -32,10 +32,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _clearSession() async {
     await SecureStorageService().clearAll();
-    if (mounted)
+    if (mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Cache sesi dihapus')));
+    }
   }
 
   Future<void> _verifyAll() async {
@@ -51,7 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             customers: list,
             registrationId: auth.registrationId,
           );
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -59,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -69,7 +71,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     appBar: const GlassAppBar(title: 'Pengaturan'),
     body: AppleBackground(
       child: Consumer<AuthProvider>(
-        builder: (_, auth, __) => ListView(
+        builder: (_, auth, child) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
             const Card(

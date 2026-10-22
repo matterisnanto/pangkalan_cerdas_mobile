@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../models/pelanggan_model.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/mypertamina_api_service.dart';
 
 class PelangganFormDialog extends StatefulWidget {
   final Pelanggan? existing;
@@ -20,6 +23,12 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
   late final TextEditingController _alamatCtrl;
   late String _kategori;
 
+  bool _isCheckingNik = false;
+  String? _nikError;
+  String? _lastCheckedNik;
+  String? _familyIdEncrypted;
+  int? _quotaRemaining;
+
   @override
   void initState() {
     super.initState();
@@ -28,10 +37,114 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
     _tglCtrl = TextEditingController(text: widget.existing?.tanggalLahir ?? '');
     _alamatCtrl = TextEditingController(text: widget.existing?.alamat ?? '');
     _kategori = widget.existing?.kategori ?? 'Rumah Tangga';
+    _familyIdEncrypted = widget.existing?.encryptedFamilyId;
+    _quotaRemaining = widget.existing?.sisaKuotaHarian;
+    _lastCheckedNik = widget.existing?.nik;
+
+    _nikCtrl.addListener(_handleNikInput);
+  }
+
+  void _handleNikInput() {
+    final text = _nikCtrl.text.trim();
+    if (text.length == 16 && text != _lastCheckedNik && !_isCheckingNik) {
+      _checkNik(text);
+    } else if (text.length < 16) {
+      if (_nikError != null || _quotaRemaining != null) {
+        setState(() {
+          _nikError = null;
+          _quotaRemaining = null;
+          _lastCheckedNik = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _checkNik(String nik) async {
+    setState(() {
+      _isCheckingNik = true;
+      _nikError = null;
+      _lastCheckedNik = nik;
+    });
+
+    try {
+      final auth = context.read<AuthProvider>();
+      if (!auth.isTokenAvailable) {
+        throw StateError('Sesi MyPertamina tidak aktif. Silakan login terlebih dahulu.');
+      }
+      final api = MyPertaminaApiService(auth.apiClient);
+      final customer = await api.autoFetchCustomerByNik(nik);
+
+      if (!mounted) return;
+
+      setState(() {
+        _namaCtrl.text = customer.name;
+        _familyIdEncrypted = customer.familyIdEncrypted;
+        _quotaRemaining = customer.quotaRemaining;
+
+        final catLower = customer.category.toLowerCase();
+        if (catLower.contains('usaha') || catLower.contains('umkm')) {
+          _kategori = 'UMKM';
+        } else {
+          _kategori = 'Rumah Tangga';
+        }
+        _nikError = null;
+        _isCheckingNik = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Data NIK [${customer.name}] Berhasil Ditemukan!',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF00AA5B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isCheckingNik = false;
+        _quotaRemaining = null;
+        _nikError = 'NIK tidak terdaftar atau tidak valid di MyPertamina';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'NIK tidak terdaftar atau tidak valid di MyPertamina',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   @override
   void dispose() {
+    _nikCtrl.removeListener(_handleNikInput);
     _nikCtrl.dispose();
     _namaCtrl.dispose();
     _tglCtrl.dispose();
@@ -103,6 +216,7 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
                         FilteringTextInputFormatter.digitsOnly,
                         LengthLimitingTextInputFormatter(16),
                       ],
+                      suffixIcon: _buildNikSuffix(),
                       validator: (v) => (v == null || v.trim().length != 16)
                           ? 'NIK harus 16 digit angka'
                           : null,
@@ -111,6 +225,8 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
                       fieldFill: fieldFill,
                       primaryColor: primaryColor,
                     ),
+                    if (_buildNikStatusBanner() != null)
+                      _buildNikStatusBanner()!,
                     const SizedBox(height: 12),
                     _field(
                       _namaCtrl,
@@ -349,10 +465,153 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
       alamat: _alamatCtrl.text.trim().isNotEmpty
           ? _alamatCtrl.text.trim()
           : null,
+      encryptedFamilyId: _familyIdEncrypted ?? widget.existing?.encryptedFamilyId,
+      sisaKuotaHarian: _quotaRemaining ?? widget.existing?.sisaKuotaHarian ?? 0,
+      sisaKuotaBulanan: _quotaRemaining ?? widget.existing?.sisaKuotaBulanan ?? 0,
+      lastSyncedAt: _quotaRemaining != null ? DateTime.now() : widget.existing?.lastSyncedAt,
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );
     Navigator.pop(context);
     widget.onSave(p);
+  }
+
+  Widget? _buildNikSuffix() {
+    if (_isCheckingNik) {
+      return const Padding(
+        padding: EdgeInsets.all(12),
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.2,
+            color: Color(0xFF00AA5B),
+          ),
+        ),
+      );
+    }
+    if (_quotaRemaining != null) {
+      return const Icon(
+        Icons.check_circle_rounded,
+        color: Color(0xFF00AA5B),
+        size: 22,
+      );
+    }
+    if (_nikError != null) {
+      return const Icon(
+        Icons.error_outline_rounded,
+        color: Color(0xFFDC2626),
+        size: 22,
+      );
+    }
+    return null;
+  }
+
+  Widget? _buildNikStatusBanner() {
+    if (_isCheckingNik) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF00AA5B).withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: const Color(0xFF00AA5B).withValues(alpha: 0.25),
+          ),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFF00AA5B),
+              ),
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Memeriksa NIK ke MyPertamina...',
+              style: TextStyle(
+                color: Color(0xFF00AA5B),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_nikError != null) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFDC2626).withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: const Color(0xFFDC2626).withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: Color(0xFFDC2626),
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _nikError!,
+                style: const TextStyle(
+                  color: Color(0xFFDC2626),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_quotaRemaining != null) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF00AA5B).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: const Color(0xFF00AA5B).withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.verified, color: Color(0xFF00AA5B), size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: RichText(
+                text: TextSpan(
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF00AA5B)),
+                  children: [
+                    const TextSpan(
+                      text: 'Terverifikasi • ',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const TextSpan(text: 'Sisa Kuota: '),
+                    TextSpan(
+                      text: '$_quotaRemaining Tabung',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return null;
   }
 
   Widget _field(
@@ -365,6 +624,7 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
     TextInputType? keyboard,
     List<TextInputFormatter>? formatters,
     String? Function(String?)? validator,
+    Widget? suffixIcon,
     int maxLines = 1,
     required Color textPrimary,
     required Color textSecondary,
@@ -397,6 +657,7 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
           fontSize: 13,
         ),
         prefixIcon: Icon(icon, color: textSecondary, size: 20),
+        suffixIcon: suffixIcon,
         filled: true,
         fillColor: fieldFill,
         border: OutlineInputBorder(

@@ -45,8 +45,9 @@ class GlassCard extends StatelessWidget {
       color: backgroundColor ?? Theme.of(context).cardColor,
       child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
     );
-    if (onTap != null)
+    if (onTap != null) {
       card = InkWell(borderRadius: radius, onTap: onTap, child: card);
+    }
     return margin == null ? card : Padding(padding: margin!, child: card);
   }
 }

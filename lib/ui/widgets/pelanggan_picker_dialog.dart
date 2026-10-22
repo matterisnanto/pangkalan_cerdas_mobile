@@ -72,16 +72,16 @@ class _PelangganPickerDialogState extends State<PelangganPickerDialog> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(
-          color: Colors.white.withOpacity(0.7),
+          color: Colors.white.withValues(alpha: 0.7),
           fontSize: 13,
         ),
         prefixIcon: Icon(icon, color: Colors.white70, size: 20),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.06),
+        fillColor: Colors.white.withValues(alpha: 0.06),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -119,7 +119,7 @@ class _PelangganPickerDialogState extends State<PelangganPickerDialog> {
           decoration: InputDecoration(
             labelText: 'Cari Master Pelanggan (Nama / NIK)',
             labelStyle: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               fontSize: 13,
             ),
             prefixIcon: const Icon(
@@ -128,11 +128,11 @@ class _PelangganPickerDialogState extends State<PelangganPickerDialog> {
               size: 20,
             ),
             filled: true,
-            fillColor: Colors.white.withOpacity(0.08),
+            fillColor: Colors.white.withValues(alpha: 0.08),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
@@ -161,8 +161,8 @@ class _PelangganPickerDialogState extends State<PelangganPickerDialog> {
         margin: const EdgeInsets.fromLTRB(16, 20, 16, 24),
         padding: const EdgeInsets.all(20),
         borderRadius: BorderRadius.circular(24),
-        backgroundColor: const Color(0xFF1E1B4B).withOpacity(0.95),
-        borderColor: Colors.white.withOpacity(0.35),
+        backgroundColor: const Color(0xFF1E1B4B).withValues(alpha: 0.95),
+        borderColor: Colors.white.withValues(alpha: 0.35),
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(

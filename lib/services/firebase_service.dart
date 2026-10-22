@@ -216,10 +216,11 @@ class FirebaseService {
         .collection('pelanggan')
         .doc(nik)
         .set(data, SetOptions(merge: true));
-    if (registrationId.isNotEmpty)
+    if (registrationId.isNotEmpty) {
       await _pelangganCol(
         registrationId,
       ).doc(nik).set(data, SetOptions(merge: true));
+    }
   }
 
   // ─── Log Transaksi (scoped by registrationId) ───

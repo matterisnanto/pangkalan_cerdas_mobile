@@ -55,7 +55,7 @@ class PangkalanCerdasApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TransactionQueueProvider()),
       ],
       child: Consumer<ThemeProvider>(
-        builder: (_, theme, __) => MaterialApp(
+        builder: (_, theme, child) => MaterialApp(
           title: 'Pangkalan Cerdas LPG 3Kg',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),

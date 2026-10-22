@@ -53,13 +53,13 @@ class SecureStorageService {
     required String id,
     required String name,
   }) async {
-    await _storage.write(key: '${_profilePrefix}${index}_id', value: id);
-    await _storage.write(key: '${_profilePrefix}${index}_name', value: name);
+    await _storage.write(key: '$_profilePrefix${index}_id', value: id);
+    await _storage.write(key: '$_profilePrefix${index}_name', value: name);
   }
 
   Future<Map<String, String>> getPangkalanProfile(int index) async => {
-    'id': await _storage.read(key: '${_profilePrefix}${index}_id') ?? '',
-    'name': await _storage.read(key: '${_profilePrefix}${index}_name') ?? '',
+    'id': await _storage.read(key: '$_profilePrefix${index}_id') ?? '',
+    'name': await _storage.read(key: '$_profilePrefix${index}_name') ?? '',
   };
 
   Future<void> clearSession() async {

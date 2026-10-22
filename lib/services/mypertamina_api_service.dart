@@ -36,6 +36,30 @@ class TransactionSubmission {
   });
 }
 
+class AutoFetchedCustomer {
+  final String nik;
+  final String name;
+  final String category;
+  final String familyIdEncrypted;
+  final int quotaRemaining;
+  final num dailyRemaining;
+  final num monthlyRemaining;
+  final Map<String, dynamic> rawVerification;
+  final Map<String, dynamic> rawQuota;
+
+  const AutoFetchedCustomer({
+    required this.nik,
+    required this.name,
+    required this.category,
+    required this.familyIdEncrypted,
+    required this.quotaRemaining,
+    this.dailyRemaining = 0,
+    this.monthlyRemaining = 0,
+    this.rawVerification = const {},
+    this.rawQuota = const {},
+  });
+}
+
 class MyPertaminaApiService {
   static const baseUrl = 'https://api-map.my-pertamina.id';
   final ApiClient client;
@@ -71,6 +95,88 @@ class MyPertaminaApiService {
           query: {'nationalityId': nik},
         ),
       );
+
+  /// SMART AUTO-FILL NIK berdasarkan API MyPertamina
+  Future<AutoFetchedCustomer> autoFetchCustomerByNik(String nik) async {
+    final cleanNik = nik.trim();
+    if (cleanNik.length != 16) {
+      throw ArgumentError('NIK harus 16 digit angka');
+    }
+
+    // a. GET https://api-map.my-pertamina.id/general/customer-service/v1/verify-nik?nationalityId=$nik
+    final resp = await _get(
+      '/general/customer-service/v1/verify-nik',
+      query: {'nationalityId': cleanNik},
+    );
+
+    // b. Ekstrak data JSON
+    final name = resp['name']?.toString().trim() ?? '';
+    if (name.isEmpty) {
+      throw StateError('NIK tidak terdaftar atau tidak valid di MyPertamina');
+    }
+
+    String category = 'Rumah Tangga';
+    if (resp['customerTypes'] is List && (resp['customerTypes'] as List).isNotEmpty) {
+      final first = (resp['customerTypes'] as List).first;
+      if (first is Map && first['name'] != null) {
+        category = first['name'].toString().trim();
+      }
+    } else if (resp['customerTypes'] is Map && resp['customerTypes']['name'] != null) {
+      category = resp['customerTypes']['name'].toString().trim();
+    }
+
+    final familyIdEncrypted = resp['familyIdEncrypted']?.toString() ??
+        resp['familyId']?.toString() ??
+        '';
+
+    // c. GET https://api-map.my-pertamina.id/general/v5/customers/$nik/quota?familyId=$familyIdEncrypted&customerType=$category
+    int quotaRemaining = 0;
+    num daily = 0;
+    num monthly = 0;
+    Map<String, dynamic> quotaJson = {};
+
+    if (familyIdEncrypted.isNotEmpty) {
+      try {
+        quotaJson = await _get(
+          '/general/v5/customers/$cleanNik/quota',
+          query: {
+            'familyId': familyIdEncrypted,
+            'customerType': category,
+          },
+        );
+        daily = (quotaJson['dailyAll'] ?? quotaJson['dailyPerSegment'] ?? 0) as num;
+        monthly = (quotaJson['monthly'] ?? 0) as num;
+        final rawRemaining = quotaJson['quotaRemaining'] ??
+            quotaJson['dailyAll'] ??
+            quotaJson['dailyPerSegment'] ??
+            quotaJson['familyQuota'] ??
+            daily;
+        if (rawRemaining is num) {
+          quotaRemaining = rawRemaining.toInt();
+        } else if (rawRemaining != null) {
+          quotaRemaining = int.tryParse(rawRemaining.toString()) ?? 0;
+        }
+      } catch (_) {
+        quotaRemaining = (category.toLowerCase().contains('umkm') ||
+                category.toLowerCase().contains('usaha'))
+            ? 5
+            : 2;
+      }
+    }
+
+    // d. Kembalikan objek Customer lengkap
+    return AutoFetchedCustomer(
+      nik: cleanNik,
+      name: name,
+      category: category,
+      familyIdEncrypted: familyIdEncrypted,
+      quotaRemaining: quotaRemaining,
+      dailyRemaining: daily,
+      monthlyRemaining: monthly,
+      rawVerification: resp,
+      rawQuota: quotaJson,
+    );
+  }
   Future<(CustomerVerificationModel, QuotaRemainingModel)> syncCustomerQuota(
     String nik,
     String category,

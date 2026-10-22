@@ -68,11 +68,11 @@ class GlassTextField extends StatelessWidget {
       fillColor: Theme.of(context).inputDecorationTheme.fillColor,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: Colors.white.withOpacity(.25)),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: .25)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: Colors.white.withOpacity(.25)),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: .25)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
@@ -120,8 +120,8 @@ class GlassBottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDarkMode;
     final backgroundColor = isDark
-        ? const Color(0xFF0F172A).withOpacity(.75)
-        : Colors.white.withOpacity(.75);
+        ? const Color(0xFF0F172A).withValues(alpha: .75)
+        : Colors.white.withValues(alpha: .75);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
       child: ClipRRect(
@@ -132,7 +132,7 @@ class GlassBottomNavBar extends StatelessWidget {
             decoration: BoxDecoration(
               color: backgroundColor,
               border: Border(
-                top: BorderSide(color: Colors.white.withOpacity(.2)),
+                top: BorderSide(color: Colors.white.withValues(alpha: .2)),
               ),
             ),
             child: NavigationBar(
@@ -140,7 +140,7 @@ class GlassBottomNavBar extends StatelessWidget {
               onDestinationSelected: onDestinationSelected,
               backgroundColor: Colors.transparent,
               elevation: 0,
-              indicatorColor: const Color(0xFF34D399).withOpacity(.2),
+              indicatorColor: const Color(0xFF34D399).withValues(alpha: .2),
               destinations: const [
                 NavigationDestination(
                   icon: Icon(Icons.language_outlined),
