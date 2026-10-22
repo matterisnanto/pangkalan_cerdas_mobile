@@ -49,7 +49,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.red.shade800 : Colors.teal.shade700,
+        backgroundColor: isError ? Colors.red.shade800 : const Color(0xFF00AA5B),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -236,7 +236,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
       label: Text(label),
       selected: selected,
       onSelected: (_) => setState(() => _selectedKategori = label),
-      selectedColor: const Color(0xFF0063F7),
+      selectedColor: const Color(0xFF00AA5B),
       backgroundColor: chipBg,
       labelStyle: TextStyle(
         color: selected ? Colors.white : textSecondary,
@@ -245,7 +245,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
       ),
       shape: StadiumBorder(
         side: BorderSide(
-          color: selected ? const Color(0xFF0063F7) : chipBorder,
+          color: selected ? const Color(0xFF00AA5B) : chipBorder,
           width: 1.1,
         ),
       ),
@@ -327,13 +327,35 @@ class _PelangganScreenState extends State<PelangganScreen> {
           ),
           Row(
             children: [
-              _iconButton(
-                icon: Icons.upload_file_outlined,
-                tooltip: 'Import Excel (.xlsx)',
-                loading: _isImporting,
-                onTap: _handleImport,
-                isDark: isDark,
-                textPrimary: textPrimary,
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00AA5B),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: _isImporting ? null : _handleImport,
+                icon: _isImporting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.file_upload_outlined, size: 18, color: Colors.white),
+                label: const Text(
+                  'Import Excel',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
               _iconButton(
@@ -395,7 +417,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(20),
-            borderSide: const BorderSide(color: Color(0xFF0063F7), width: 1.5),
+            borderSide: const BorderSide(color: Color(0xFF00AA5B), width: 1.5),
           ),
         ),
       ),
@@ -411,7 +433,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openFormDialog(),
-        backgroundColor: const Color(0xFF0063F7),
+        backgroundColor: const Color(0xFF00AA5B),
         elevation: 4,
         icon: const Icon(Icons.person_add_alt_1, color: Colors.white, size: 20),
         label: const Text(
@@ -474,7 +496,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
                       child: CircularProgressIndicator(
-                        color: Color(0xFF0063F7),
+                        color: Color(0xFF00AA5B),
                       ),
                     );
                   }

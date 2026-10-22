@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/pelanggan_model.dart';
-import '../theme/app_theme.dart';
 
 class PelangganFormDialog extends StatefulWidget {
   final Pelanggan? existing;
@@ -49,7 +48,7 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
     final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
     final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
     final fieldFill = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
-    final primaryColor = isDark ? const Color(0xFF10B981) : AppTheme.emerald;
+    final primaryColor = const Color(0xFF00AA5B);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -189,12 +188,12 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
                           flex: 2,
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryColor,
+                              backgroundColor: const Color(0xFF00AA5B),
                               foregroundColor: Colors.white,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                             ),
                             icon: const Icon(Icons.save_outlined, size: 18, color: Colors.white),
@@ -267,7 +266,7 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
                   value: 'Rumah Tangga',
                   child: Row(
                     children: [
-                      const Icon(Icons.home, size: 18, color: Color(0xFF0063F7)),
+                      const Icon(Icons.home, size: 18, color: Color(0xFF00AA5B)),
                       const SizedBox(width: 10),
                       Text('Rumah Tangga', style: TextStyle(color: textPrimary)),
                     ],

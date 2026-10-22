@@ -129,7 +129,7 @@ class PelangganCard extends StatelessWidget {
                   children: [
                     _capsule('Riwayat', Icons.receipt_long_outlined, const Color(0xFF0063F7), isDark, onHistory ?? onTap),
                     const SizedBox(width: 8),
-                    _capsule('Edit', Icons.edit_outlined, isDark ? const Color(0xFF10B981) : AppTheme.emerald, isDark, onEdit),
+                    _capsule('Edit', Icons.edit_outlined, const Color(0xFF00AA5B), isDark, onEdit),
                     const SizedBox(width: 8),
                     _capsule('Hapus', Icons.delete_outline, const Color(0xFFDC2626), isDark, onDelete),
                   ],

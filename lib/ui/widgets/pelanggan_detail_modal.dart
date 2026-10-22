@@ -276,7 +276,7 @@ class PelangganDetailModal extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0063F7),
+                      backgroundColor: const Color(0xFF00AA5B),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 12),
