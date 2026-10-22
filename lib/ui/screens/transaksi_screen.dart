@@ -36,14 +36,13 @@ class _TransaksiScreenState extends State<TransaksiScreen>
   bool _loadingLogs = true;
   bool _tokenExpired = false;
   String? _errorMessage;
-  int _historyTab = 0;
   String _myPertaminaSearch = '';
   final _myPertaminaSearchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadQueue();
       _loadLogs();
@@ -268,12 +267,16 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                 indicatorColor: cs.primary,
                 tabs: [
                   Tab(
-                    icon: const Icon(Icons.queue, size: 18),
-                    text: 'Antrean (${txQueue.totalQueue})',
+                    icon: const Icon(Icons.queue_play_next, size: 18),
+                    text: 'Antrean',
                   ),
                   Tab(
                     icon: const Icon(Icons.history, size: 18),
-                    text: 'Log Riwayat (${_logs.length})',
+                    text: 'Log Riwayat',
+                  ),
+                  Tab(
+                    icon: const Icon(Icons.cloud_sync, size: 18),
+                    text: 'Riwayat Transaksi',
                   ),
                 ],
               ),
@@ -283,6 +286,10 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                   children: [
                     _buildQueueTab(context, txQueue),
                     _buildLogTab(context, txQueue),
+                    _buildMyPertaminaHistory(
+                      context,
+                      context.watch<TransactionProvider>(),
+                    ),
                   ],
                 ),
               ),
@@ -663,7 +670,6 @@ class _TransaksiScreenState extends State<TransaksiScreen>
   }
 
   Widget _buildLogTab(BuildContext context, TransactionQueueProvider txQueue) {
-    final transactionProvider = context.watch<TransactionProvider>();
     if (_loadingLogs) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -738,40 +744,17 @@ class _TransaksiScreenState extends State<TransaksiScreen>
       );
     }
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: SegmentedButton<int>(
-            segments: const [
-              ButtonSegment(value: 0, label: Text('Transaksi Lokal')),
-              ButtonSegment(value: 1, label: Text('Riwayat MyPertamina')),
-            ],
-            selected: {_historyTab},
-            onSelectionChanged: (value) =>
-                setState(() => _historyTab = value.first),
-          ),
-        ),
-        if (_historyTab == 1)
-          Expanded(
-            child: _buildMyPertaminaHistory(context, transactionProvider),
-          )
-        else
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadLogs,
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                itemCount: banners.length + _logs.length,
-                itemBuilder: (context, index) {
-                  if (index < banners.length) return banners[index];
-                  final logIndex = index - banners.length;
-                  return _buildLogCard(context, _logs[logIndex], txQueue);
-                },
-              ),
-            ),
-          ),
-      ],
+    return RefreshIndicator(
+      onRefresh: _loadLogs,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+        itemCount: banners.length + _logs.length,
+        itemBuilder: (context, index) {
+          if (index < banners.length) return banners[index];
+          final logIndex = index - banners.length;
+          return _buildLogCard(context, _logs[logIndex], txQueue);
+        },
+      ),
     );
   }
 
