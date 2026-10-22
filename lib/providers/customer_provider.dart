@@ -31,6 +31,44 @@ class CustomerProvider extends ChangeNotifier {
     });
   }
 
+  Future<void> autoSaveCustomerFromPortalQuota(
+    Map<String, dynamic> data,
+  ) async {
+    final nik = '${data['nik'] ?? ''}'.trim();
+    if (!RegExp(r'^\d{16}$').hasMatch(nik)) {
+      debugPrint('⚠️ [V5 CUSTOMER] NIK tidak valid: $nik');
+      return;
+    }
+    final name = '${data['name'] ?? ''}'.trim();
+    final familyId = '${data['familyId'] ?? ''}'.trim();
+    final category = Pelanggan.normalizeKategori('${data['category'] ?? ''}');
+    final remainingQuota = data['remainingQuota'] is num
+        ? (data['remainingQuota'] as num).toInt()
+        : int.tryParse('${data['remainingQuota'] ?? 0}') ?? 0;
+    debugPrint(
+      '👤 [V5 CUSTOMER] Upsert NIK: $nik | Nama: $name | Family ID: $familyId | Kuota: $remainingQuota',
+    );
+    try {
+      final existing = await _pelangganService.getPelangganByNik(nik);
+      final customer =
+          (existing ?? Pelanggan(nik: nik, nama: name, kategori: category))
+              .copyWith(
+                nama: name.isEmpty ? existing?.nama : name,
+                kategori: category,
+                familyIdEncrypted: familyId.isEmpty ? null : familyId,
+                encryptedFamilyId: familyId.isEmpty ? null : familyId,
+                sisaKuota: remainingQuota,
+                sisaKuotaBulanan: remainingQuota,
+              );
+      await _pelangganService.addPelanggan(customer);
+      debugPrint('✅ [V5 CUSTOMER] Pelanggan tersimpan: $nik');
+      safeNotifyListeners();
+    } catch (e, stackTrace) {
+      debugPrint('❌ [V5 CUSTOMER SAVE ERROR]: $e\n$stackTrace');
+      rethrow;
+    }
+  }
+
   Future<void> autoSaveCustomerFromPortalTransaction(
     Map<String, dynamic> txData,
   ) => autoSaveCustomerFromPortal(txData);

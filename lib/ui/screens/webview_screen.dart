@@ -363,6 +363,38 @@ class _WebViewScreenState extends State<WebViewScreen>
                     },
                   );
                   controller.addJavaScriptHandler(
+                    handlerName: 'onMyPertaminaCustomerCaptured',
+                    callback: (args) async {
+                      if (args.isEmpty || args.first is! Map) return;
+                      try {
+                        final data = Map<String, dynamic>.from(
+                          args.first as Map,
+                        );
+                        debugPrint(
+                          '📩 [V5 CUSTOMER HANDLER] NIK: ${data['nik']}',
+                        );
+                        await context
+                            .read<CustomerProvider>()
+                            .autoSaveCustomerFromPortalQuota(data);
+                        final auth = context.read<AuthProvider>();
+                        final customers = await FirebaseService()
+                            .getAllPelanggan(auth.registrationId);
+                        await context
+                            .read<TransactionProvider>()
+                            .syncAndSaveMyPertaminaTransactionsThisYear(
+                              customers,
+                            );
+                        debugPrint(
+                          '✅ [AUTO-CAPTURE V5] Pelanggan NIK ${data['nik']} berhasil disimpan ke Master Pelanggan!',
+                        );
+                      } catch (e, stackTrace) {
+                        debugPrint(
+                          '❌ [V5 CUSTOMER HANDLER ERROR]: $e\n$stackTrace',
+                        );
+                      }
+                    },
+                  );
+                  controller.addJavaScriptHandler(
                     handlerName: 'onMyPertaminaTransactionCaptured',
                     callback: (args) async {
                       if (args.isEmpty || args.first is! String) return;
@@ -637,15 +669,32 @@ class _WebViewScreenState extends State<WebViewScreen>
   console.log('🌐 [WEBVIEW JS] Interceptor aktif & mendengarkan Fetch/XHR request...');
   function forward(method, url, body, status) {
     console.log('🌐 [WEBVIEW API CALL] Request URL: ' + url + ' | Status: ' + status);
-    if (String(method).toUpperCase() !== 'POST' || !url || !body) return;
-    if ((url.indexOf('/general/v2/transactions') < 0 && url.indexOf('/general/v3/transactions') < 0) ||
-        (status !== 200 && status !== 201)) return;
+    if (!url || !body || (status !== 200 && status !== 201)) return;
     try {
       var parsed = typeof body === 'string' ? JSON.parse(body) : body;
       var jsonString = JSON.stringify(parsed);
-      if (url.indexOf('/transactions') >= 0 || url.indexOf('/customers/verify') >= 0) console.log('📦 [WEBVIEW CAPTURED PAYLOAD]: ' + jsonString);
+      if (url.indexOf('/general/v5/customers/') >= 0 && url.indexOf('/quota') >= 0 && String(method).toUpperCase() === 'GET') {
+        var parsedUrl = new URL(url, window.location.href);
+        var customerMatch = parsedUrl.pathname.match(/\/customers\/([0-9]{16})\/quota/);
+        if (customerMatch) {
+          var captured = {
+            nik: customerMatch[1],
+            familyId: parsedUrl.searchParams.get('familyId') || '',
+            category: parsedUrl.searchParams.get('customerType') || 'Rumah Tangga',
+            name: parsed && parsed.data ? parsed.data.name || '' : '',
+            remainingQuota: parsed && parsed.data ? parsed.data.remainingQuota || 0 : 0,
+            rawResponse: parsed
+          };
+          console.log('📦 [WEBVIEW V5 QUOTA]: ' + JSON.stringify(captured));
+          window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', captured);
+        }
+        return;
+      }
+      if (String(method).toUpperCase() !== 'POST' ||
+          (url.indexOf('/general/v2/transactions') < 0 && url.indexOf('/general/v3/transactions') < 0)) return;
+      console.log('📦 [WEBVIEW CAPTURED PAYLOAD]: ' + jsonString);
       window.flutter_inappwebview.callHandler('onMyPertaminaTransactionCaptured', jsonString);
-    } catch (_) {}
+    } catch (error) { console.log('❌ [WEBVIEW INTERCEPTOR ERROR]: ' + error); }
   }
   const originalFetch = window.fetch;
   window.fetch = function(input) {
