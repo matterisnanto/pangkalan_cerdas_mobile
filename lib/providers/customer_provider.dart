@@ -39,38 +39,49 @@ class CustomerProvider extends ChangeNotifier {
       syncTotalCount = customers.length;
       notifyListeners();
       final api = MyPertaminaApiService(_authProvider.apiClient);
-      for (var i = 0; i < customers.length; i++) {
-        final customer = customers[i];
-        try {
-          var familyId = customer.familyIdEncrypted;
-          if (familyId == null || familyId.isEmpty) {
-            final verified = await api.verifyNik(customer.nik);
-            familyId = verified.familyIdEncrypted.isNotEmpty
-                ? verified.familyIdEncrypted
-                : verified.familyId;
-          }
-          if (familyId.isEmpty) continue;
-          final quota = await api.fetchCustomerQuota(
-            customer.nik,
-            familyId,
-            customer.kategori,
-          );
-          await _pelangganService.updatePelanggan(
-            customer.copyWith(
-              sisaKuota: quota,
-              sisaKuotaBulanan: quota,
-              familyIdEncrypted: familyId,
-              encryptedFamilyId: familyId,
-              lastQuotaUpdate: DateTime.now(),
-              lastSyncedAt: DateTime.now(),
-            ),
-          );
-        } catch (_) {
-          // Continue syncing remaining customers when one NIK fails.
-        }
-        syncCurrentIndex = i + 1;
+      const chunkSize = 4;
+      for (var start = 0; start < customers.length; start += chunkSize) {
+        final end = (start + chunkSize).clamp(0, customers.length);
+        final currentBatch = customers.sublist(start, end);
+
+        await Future.wait(
+          currentBatch.map((customer) async {
+            try {
+              var familyId = customer.familyIdEncrypted;
+              if (familyId == null || familyId.isEmpty) {
+                final verified = await api.verifyNik(customer.nik);
+                familyId = verified.familyIdEncrypted.isNotEmpty
+                    ? verified.familyIdEncrypted
+                    : verified.familyId;
+              }
+              if (familyId.isEmpty) return;
+              final quota = await api.fetchCustomerQuota(
+                customer.nik,
+                familyId,
+                customer.kategori,
+              );
+              final now = DateTime.now();
+              await _pelangganService.updatePelanggan(
+                customer.copyWith(
+                  sisaKuota: quota,
+                  sisaKuotaBulanan: quota,
+                  familyIdEncrypted: familyId,
+                  encryptedFamilyId: familyId,
+                  lastQuotaUpdate: now,
+                  lastSyncedAt: now,
+                ),
+              );
+            } catch (_) {
+              // Continue syncing remaining customers when one NIK fails.
+            }
+          }),
+        );
+
+        syncCurrentIndex += currentBatch.length;
         notifyListeners();
-        await Future<void>.delayed(const Duration(milliseconds: 250));
+        if (end < customers.length) {
+          await Future<void>.delayed(const Duration(milliseconds: 150));
+        }
       }
     } finally {
       _isSyncing = false;

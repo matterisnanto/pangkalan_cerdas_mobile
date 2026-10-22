@@ -431,7 +431,9 @@ class _PelangganScreenState extends State<PelangganScreen> {
         if (!provider.isSyncingQuota) return const SizedBox.shrink();
         final total = provider.syncTotalCount;
         final current = provider.syncCurrentIndex;
-        final progress = total == 0 ? 0.0 : (current / total).clamp(0.0, 1.0);
+        final double progress = total > 0
+            ? (current / total).clamp(0.0, 1.0).toDouble()
+            : 0.0;
         final percent = (progress * 100).round();
         return AnimatedSize(
           duration: const Duration(milliseconds: 220),
