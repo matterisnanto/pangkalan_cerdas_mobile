@@ -278,6 +278,7 @@ class MyPertaminaApiService {
     debugPrint('🌐 [MYPTM API] Request URL: $url');
     try {
       final token = await client.token;
+      final cleanToken = token?.trim() ?? '';
       final response = await client.dio.get(
         '/general/v3/transactions/report',
         queryParameters: {
@@ -288,7 +289,7 @@ class MyPertaminaApiService {
         },
         options: Options(
           headers: {
-            'Authorization': 'Bearer $token',
+            'Authorization': 'Bearer $cleanToken',
             'Accept': 'application/json, text/plain, */*',
             'User-Agent':
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0',

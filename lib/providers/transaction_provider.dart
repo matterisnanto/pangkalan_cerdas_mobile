@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:developer' as developer;
 import '../models/pelanggan_model.dart';
@@ -102,26 +103,52 @@ class TransactionProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final now = DateTime.now();
+      final chunkCount = now.month * 2 - (now.day < 16 ? 1 : 0);
       monthlyProgress = 0;
-      monthlyTotal = now.month;
+      monthlyTotal = chunkCount;
       notifyListeners();
       final raw = <Map<String, dynamic>>[];
+      var chunkIndex = 0;
       for (var month = 1; month <= now.month; month++) {
-        final start =
-            '${now.year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-01';
         final lastDay = DateTime(now.year, month + 1, 0).day;
-        final endDay = month == now.month ? now.day : lastDay;
-        final end =
-            '${now.year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${endDay.toString().padLeft(2, '0')}';
-        debugPrint('📅 [MYPTM] Bulan $month/$monthlyTotal: $start - $end');
-        raw.addAll(
-          await _api.fetchMyPertaminaTransactionReport(
-            startDate: start,
-            endDate: end,
-          ),
-        );
-        monthlyProgress = month;
-        notifyListeners();
+        final periods = <({int startDay, int endDay})>[
+          (startDay: 1, endDay: 15),
+          (startDay: 16, endDay: lastDay),
+        ];
+        for (final period in periods) {
+          if (month == now.month && period.startDay > now.day) continue;
+          final endDay = month == now.month && period.endDay > now.day
+              ? now.day
+              : period.endDay;
+          final start =
+              '${now.year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${period.startDay.toString().padLeft(2, '0')}';
+          final end =
+              '${now.year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${endDay.toString().padLeft(2, '0')}';
+          chunkIndex++;
+          monthlyProgress = chunkIndex;
+          notifyListeners();
+          debugPrint(
+            '📅 [MYPTM] Chunk $chunkIndex/$monthlyTotal: $start - $end',
+          );
+          try {
+            raw.addAll(
+              await _api.fetchMyPertaminaTransactionReport(
+                startDate: start,
+                endDate: end,
+              ),
+            );
+          } on DioException catch (e, stackTrace) {
+            final status = e.response?.statusCode;
+            if (status == 406 || status == 404) {
+              debugPrint(
+                '⚠️ [MYPTM] Skip chunk $start - $end; HTTP $status: $e',
+              );
+              debugPrint('📌 [MYPTM CHUNK STACKTRACE]: $stackTrace');
+              continue;
+            }
+            rethrow;
+          }
+        }
       }
       final byName = <String, List<Pelanggan>>{};
       for (final customer in customers) {

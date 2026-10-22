@@ -881,7 +881,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
               const LinearProgressIndicator(),
               if (provider.monthlyTotal > 0)
                 Text(
-                  'Menarik bulan ${provider.monthlyProgress}/${provider.monthlyTotal}...',
+                  'Menarik periode ${provider.monthlyProgress}/${provider.monthlyTotal}...',
                 ),
             ],
           ),
