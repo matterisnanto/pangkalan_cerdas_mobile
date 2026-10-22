@@ -39,6 +39,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
   String? _errorMessage;
   String _myPertaminaSearch = '';
   final _myPertaminaSearchController = TextEditingController();
+  String? _loadedRegistrationId;
 
   @override
   void initState() {
@@ -47,7 +48,25 @@ class _TransaksiScreenState extends State<TransaksiScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadQueue();
       _loadLogs();
-      context.read<TransactionProvider>().loadSavedMyPertaminaTransactions();
+      _loadSavedTransactionsIfReady();
+    });
+  }
+
+  void _loadSavedTransactionsIfReady() {
+    final registrationId = context.read<AuthProvider>().registrationId.trim();
+    if (registrationId.isEmpty || registrationId == _loadedRegistrationId)
+      return;
+    _loadedRegistrationId = registrationId;
+    context.read<TransactionProvider>().loadSavedMyPertaminaTransactions(
+      registrationId,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadSavedTransactionsIfReady();
     });
   }
 
@@ -259,6 +278,9 @@ class _TransaksiScreenState extends State<TransaksiScreen>
     final cs = Theme.of(context).colorScheme;
     return Consumer2<AuthProvider, TransactionQueueProvider>(
       builder: (context, auth, txQueue, _) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _loadSavedTransactionsIfReady();
+        });
         return Scaffold(
           appBar: GlassAppBar(
             title: 'Pusat Otomatisasi',

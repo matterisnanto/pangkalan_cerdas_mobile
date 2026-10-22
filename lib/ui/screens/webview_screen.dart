@@ -565,15 +565,7 @@ class _WebViewScreenState extends State<WebViewScreen>
     await auth.onTokenCaptured(token);
     if (!mounted) return;
     setState(() => _tokenCaptured = true);
-    final stock = auth.stockAvailable;
-    final storeName = auth.storeName.isEmpty ? 'Pangkalan' : auth.storeName;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$storeName Berhasil Terkoneksi - Stok: $stock Tabung'),
-      ),
-    );
     await Future<void>.delayed(const Duration(milliseconds: 250));
-    if (mounted) widget.onBackToDashboard?.call();
   }
 
   void _extractToken(Map<String, String>? headers) {

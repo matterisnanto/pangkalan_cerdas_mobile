@@ -230,7 +230,7 @@ class TransactionProvider extends ChangeNotifier {
         authProvider.registrationId,
         data,
       );
-      await loadSavedMyPertaminaTransactions();
+      await loadSavedMyPertaminaTransactions(authProvider.registrationId);
       return data.length;
     } catch (e, stackTrace) {
       error = e.toString();
@@ -248,9 +248,15 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadSavedMyPertaminaTransactions() async {
+  Future<void> loadSavedMyPertaminaTransactions(String? registrationId) async {
+    if (registrationId == null || registrationId.trim().isEmpty) {
+      debugPrint(
+        '⚠️ [MYPTM PROVIDER] registrationId masih kosong/null. Menunggu AuthProvider...',
+      );
+      return;
+    }
     final data = await _firebase.getMyPertaminaTransactions(
-      authProvider.registrationId,
+      registrationId.trim(),
     );
     transactions = data
         .map(
