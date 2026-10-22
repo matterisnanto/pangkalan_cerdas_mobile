@@ -8,8 +8,14 @@ import '../../services/mypertamina_api_service.dart';
 class PelangganFormDialog extends StatefulWidget {
   final Pelanggan? existing;
   final ValueChanged<Pelanggan> onSave;
+  final void Function(String message, {bool isError})? onNotification;
 
-  const PelangganFormDialog({super.key, this.existing, required this.onSave});
+  const PelangganFormDialog({
+    super.key,
+    this.existing,
+    required this.onSave,
+    this.onNotification,
+  });
 
   @override
   State<PelangganFormDialog> createState() => _PelangganFormDialogState();
@@ -37,9 +43,11 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
     _tglCtrl = TextEditingController(text: widget.existing?.tanggalLahir ?? '');
     _alamatCtrl = TextEditingController(text: widget.existing?.alamat ?? '');
     _kategori = widget.existing?.kategori ?? 'Rumah Tangga';
-    _familyIdEncrypted = widget.existing?.familyIdEncrypted ??
+    _familyIdEncrypted =
+        widget.existing?.familyIdEncrypted ??
         widget.existing?.encryptedFamilyId;
-    _quotaRemaining = widget.existing?.sisaKuota ??
+    _quotaRemaining =
+        widget.existing?.sisaKuota ??
         widget.existing?.sisaKuotaBulanan ??
         widget.existing?.sisaKuotaHarian;
     _lastCheckedNik = widget.existing?.nik;
@@ -72,7 +80,9 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
     try {
       final auth = context.read<AuthProvider>();
       if (!auth.isTokenAvailable) {
-        throw StateError('Sesi MyPertamina tidak aktif. Silakan login terlebih dahulu.');
+        throw StateError(
+          'Sesi MyPertamina tidak aktif. Silakan login terlebih dahulu.',
+        );
       }
       final api = MyPertaminaApiService(auth.apiClient);
       final customer = await api.autoFetchCustomerByNik(nik);
@@ -94,25 +104,8 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
         _isCheckingNik = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Data NIK [${customer.name}] Berhasil Ditemukan!',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF00AA5B),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          duration: const Duration(seconds: 3),
-        ),
+      widget.onNotification?.call(
+        'Data NIK [${customer.name}] Berhasil Ditemukan!',
       );
     } catch (e) {
       if (!mounted) return;
@@ -122,25 +115,9 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
         _nikError = 'NIK tidak terdaftar atau tidak valid di MyPertamina';
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'NIK tidak terdaftar atau tidak valid di MyPertamina',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          duration: const Duration(seconds: 3),
-        ),
+      widget.onNotification?.call(
+        'NIK tidak terdaftar atau tidak valid di MyPertamina',
+        isError: true,
       );
     }
   }
@@ -160,10 +137,18 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
     final isEdit = widget.existing != null;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final modalBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFFFFFFF);
-    final modalBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
-    final fieldFill = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+    final modalBorder = isDark
+        ? const Color(0xFF334155)
+        : const Color(0xFFE2E8F0);
+    final textPrimary = isDark
+        ? const Color(0xFFF8FAFC)
+        : const Color(0xFF0F172A);
+    final textSecondary = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF475569);
+    final fieldFill = isDark
+        ? const Color(0xFF334155)
+        : const Color(0xFFF1F5F9);
     final primaryColor = const Color(0xFF00AA5B);
 
     return Padding(
@@ -195,7 +180,9 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          isEdit ? 'Edit Data Pelanggan' : 'Tambah Pelanggan Baru',
+                          isEdit
+                              ? 'Edit Data Pelanggan'
+                              : 'Tambah Pelanggan Baru',
                           style: TextStyle(
                             color: textPrimary,
                             fontSize: 18,
@@ -203,7 +190,11 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
                           ),
                         ),
                         IconButton(
-                          icon: Icon(Icons.close, color: textSecondary, size: 22),
+                          icon: Icon(
+                            Icons.close,
+                            color: textSecondary,
+                            size: 22,
+                          ),
                           onPressed: () => Navigator.pop(context),
                         ),
                       ],
@@ -272,7 +263,8 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
                       'Pilih tanggal lahir...',
                       Icons.cake_outlined,
                       readOnly: true,
-                      onTap: () => _pickDate(isDark, modalBg, textPrimary, primaryColor),
+                      onTap: () =>
+                          _pickDate(isDark, modalBg, textPrimary, primaryColor),
                       textPrimary: textPrimary,
                       textSecondary: textSecondary,
                       fieldFill: fieldFill,
@@ -315,7 +307,11 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            icon: const Icon(Icons.save_outlined, size: 18, color: Colors.white),
+                            icon: const Icon(
+                              Icons.save_outlined,
+                              size: 18,
+                              color: Colors.white,
+                            ),
                             label: const Text(
                               'Simpan Data Pelanggan',
                               style: TextStyle(
@@ -368,7 +364,8 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: _kategori.toLowerCase().contains('umkm') ||
+              value:
+                  _kategori.toLowerCase().contains('umkm') ||
                       _kategori.toLowerCase().contains('usaha')
                   ? 'UMKM'
                   : 'Rumah Tangga',
@@ -385,9 +382,16 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
                   value: 'Rumah Tangga',
                   child: Row(
                     children: [
-                      const Icon(Icons.home, size: 18, color: Color(0xFF00AA5B)),
+                      const Icon(
+                        Icons.home,
+                        size: 18,
+                        color: Color(0xFF00AA5B),
+                      ),
                       const SizedBox(width: 10),
-                      Text('Rumah Tangga', style: TextStyle(color: textPrimary)),
+                      Text(
+                        'Rumah Tangga',
+                        style: TextStyle(color: textPrimary),
+                      ),
                     ],
                   ),
                 ),
@@ -395,9 +399,16 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
                   value: 'UMKM',
                   child: Row(
                     children: [
-                      const Icon(Icons.storefront, size: 18, color: Color(0xFF7C3AED)),
+                      const Icon(
+                        Icons.storefront,
+                        size: 18,
+                        color: Color(0xFF7C3AED),
+                      ),
                       const SizedBox(width: 10),
-                      Text('Usaha Mikro / UMKM', style: TextStyle(color: textPrimary)),
+                      Text(
+                        'Usaha Mikro / UMKM',
+                        style: TextStyle(color: textPrimary),
+                      ),
                     ],
                   ),
                 ),
@@ -468,15 +479,20 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
       alamat: _alamatCtrl.text.trim().isNotEmpty
           ? _alamatCtrl.text.trim()
           : null,
-      encryptedFamilyId: _familyIdEncrypted ?? widget.existing?.encryptedFamilyId,
-      familyIdEncrypted: _familyIdEncrypted ?? widget.existing?.familyIdEncrypted,
+      encryptedFamilyId:
+          _familyIdEncrypted ?? widget.existing?.encryptedFamilyId,
+      familyIdEncrypted:
+          _familyIdEncrypted ?? widget.existing?.familyIdEncrypted,
       sisaKuota: _quotaRemaining ?? widget.existing?.sisaKuota ?? 0,
       sisaKuotaHarian: _quotaRemaining ?? widget.existing?.sisaKuotaHarian ?? 0,
-      sisaKuotaBulanan: _quotaRemaining ?? widget.existing?.sisaKuotaBulanan ?? 0,
+      sisaKuotaBulanan:
+          _quotaRemaining ?? widget.existing?.sisaKuotaBulanan ?? 0,
       lastQuotaUpdate: _quotaRemaining != null
           ? DateTime.now()
           : widget.existing?.lastQuotaUpdate,
-      lastSyncedAt: _quotaRemaining != null ? DateTime.now() : widget.existing?.lastSyncedAt,
+      lastSyncedAt: _quotaRemaining != null
+          ? DateTime.now()
+          : widget.existing?.lastSyncedAt,
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );
     Navigator.pop(context);
@@ -600,7 +616,10 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
             Expanded(
               child: RichText(
                 text: TextSpan(
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF00AA5B)),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF00AA5B),
+                  ),
                   children: [
                     const TextSpan(
                       text: 'Terverifikasi • ',
@@ -670,15 +689,11 @@ class _PelangganFormDialogState extends State<PelangganFormDialog> {
         fillColor: fieldFill,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: textSecondary.withValues(alpha: 0.2),
-          ),
+          borderSide: BorderSide(color: textSecondary.withValues(alpha: 0.2)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: textSecondary.withValues(alpha: 0.25),
-          ),
+          borderSide: BorderSide(color: textSecondary.withValues(alpha: 0.25)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

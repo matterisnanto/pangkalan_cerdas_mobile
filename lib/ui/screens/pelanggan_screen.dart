@@ -227,6 +227,8 @@ class _PelangganScreenState extends State<PelangganScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => PelangganFormDialog(
         existing: existing,
+        onNotification: (message, {isError = false}) =>
+            showTopNotification(context, message, isError: isError),
         onSave: (pelanggan) async {
           try {
             if (existing != null) {
