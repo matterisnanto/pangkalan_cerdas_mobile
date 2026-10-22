@@ -39,6 +39,39 @@ class TransactionProvider extends ChangeNotifier {
   String? error;
   int monthlyProgress = 0;
   int monthlyTotal = 0;
+  bool uniqueCustomersOnly = false;
+  String masterStatusFilter = 'all';
+  String lpgCategoryFilter = 'all';
+
+  List<EnrichedMyPertaminaTransaction> get filteredTransactions {
+    final result = <EnrichedMyPertaminaTransaction>[];
+    final seen = <String>{};
+    for (final item in transactions) {
+      if (masterStatusFilter == 'verified' && !item.isEnriched) continue;
+      if (masterStatusFilter == 'unverified' && item.isEnriched) continue;
+      if (lpgCategoryFilter != 'all' &&
+          item.category.toUpperCase() != lpgCategoryFilter.toUpperCase()) {
+        continue;
+      }
+      if (uniqueCustomersOnly) {
+        final key = item.fullNik.isNotEmpty ? item.fullNik : item.maskedNik;
+        if (!seen.add(key)) continue;
+      }
+      result.add(item);
+    }
+    return result;
+  }
+
+  void setTransactionFilters({
+    required bool uniqueOnly,
+    required String masterStatus,
+    required String lpgCategory,
+  }) {
+    uniqueCustomersOnly = uniqueOnly;
+    masterStatusFilter = masterStatus;
+    lpgCategoryFilter = lpgCategory;
+    notifyListeners();
+  }
 
   TransactionProvider({required this.authProvider})
     : _api = MyPertaminaApiService(authProvider.apiClient);

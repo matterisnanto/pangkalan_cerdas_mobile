@@ -274,8 +274,10 @@ class _TransaksiScreenState extends State<TransaksiScreen>
           ),
           body: Column(
             children: [
-              _buildControlPanel(context, txQueue, cs),
+              if (_tabController.index != 2)
+                _buildControlPanel(context, txQueue, cs),
               TabBar(
+                onTap: (_) => setState(() {}),
                 controller: _tabController,
                 labelColor: cs.primary,
                 unselectedLabelColor: cs.onSurfaceVariant,
@@ -778,7 +780,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
     TransactionProvider provider,
   ) {
     final query = _myPertaminaSearch.trim().toUpperCase();
-    final items = provider.transactions
+    final items = provider.filteredTransactions
         .where(
           (item) =>
               query.isEmpty ||
@@ -866,13 +868,26 @@ class _TransaksiScreenState extends State<TransaksiScreen>
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-          child: TextField(
-            controller: _myPertaminaSearchController,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              hintText: 'Cari nama atau NIK',
-            ),
-            onChanged: (value) => setState(() => _myPertaminaSearch = value),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _myPertaminaSearchController,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    hintText: 'Cari nama atau NIK',
+                  ),
+                  onChanged: (value) =>
+                      setState(() => _myPertaminaSearch = value),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: () => _showTransactionFilters(context, provider),
+                icon: const Icon(Icons.filter_list),
+                label: const Text('Filter'),
+              ),
+            ],
           ),
         ),
         if (provider.isLoading)
@@ -894,6 +909,106 @@ class _TransaksiScreenState extends State<TransaksiScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showTransactionFilters(
+    BuildContext context,
+    TransactionProvider provider,
+  ) async {
+    var uniqueOnly = provider.uniqueCustomersOnly;
+    var masterStatus = provider.masterStatusFilter;
+    var lpgCategory = provider.lpgCategoryFilter;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            MediaQuery.viewInsetsOf(context).bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Filter Transaksi',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<bool>(
+                initialValue: uniqueOnly,
+                decoration: const InputDecoration(
+                  labelText: 'Kategori Pelanggan',
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: false,
+                    child: Text('Semua Transaksi'),
+                  ),
+                  DropdownMenuItem(
+                    value: true,
+                    child: Text('Pelanggan Unik Saja'),
+                  ),
+                ],
+                onChanged: (value) =>
+                    setSheetState(() => uniqueOnly = value ?? false),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: masterStatus,
+                decoration: const InputDecoration(
+                  labelText: 'Status Master Data',
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'all', child: Text('Semua Status')),
+                  DropdownMenuItem(
+                    value: 'verified',
+                    child: Text('Terverifikasi Master'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'unverified',
+                    child: Text('Belum Ada di Master'),
+                  ),
+                ],
+                onChanged: (value) =>
+                    setSheetState(() => masterStatus = value ?? 'all'),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: lpgCategory,
+                decoration: const InputDecoration(labelText: 'Kategori LPG'),
+                items: const [
+                  DropdownMenuItem(value: 'all', child: Text('Semua Kategori')),
+                  DropdownMenuItem(
+                    value: 'Rumah Tangga',
+                    child: Text('Rumah Tangga'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'UMKM',
+                    child: Text('Usaha Mikro / UMKM'),
+                  ),
+                ],
+                onChanged: (value) =>
+                    setSheetState(() => lpgCategory = value ?? 'all'),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () {
+                  provider.setTransactionFilters(
+                    uniqueOnly: uniqueOnly,
+                    masterStatus: masterStatus,
+                    lpgCategory: lpgCategory,
+                  );
+                  Navigator.pop(context);
+                },
+                child: const Text('Terapkan'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
