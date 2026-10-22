@@ -126,7 +126,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
       try {
         await context
             .read<TransactionProvider>()
-            .syncAndSaveMyPertaminaTransactions(customers);
+            .syncAndSaveMyPertaminaTransactionsThisYear(customers);
         final report = await MyPertaminaApiService(
           auth.apiClient,
         ).fetchReport();
@@ -772,8 +772,31 @@ class _TransaksiScreenState extends State<TransaksiScreen>
               item.maskedNik.contains(query),
         )
         .toList();
+    final uniqueCustomers = items
+        .map((item) => item.fullNik.isNotEmpty ? item.fullNik : item.maskedNik)
+        .toSet()
+        .length;
+    final totalTubes = items.fold<int>(0, (sum, item) => sum + item.total);
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: GlassCard(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _summaryMetric(
+                  context,
+                  'Transaksi Tahun Ini',
+                  '${items.length}',
+                ),
+                _summaryMetric(context, 'Tabung Terjual', '$totalTubes'),
+                _summaryMetric(context, 'Pelanggan Unik', '$uniqueCustomers'),
+              ],
+            ),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: FilledButton.icon(
@@ -784,7 +807,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                       context.read<AuthProvider>().registrationId,
                     );
                     if (!context.mounted) return;
-                    await provider.syncAndSaveMyPertaminaTransactions(
+                    await provider.syncAndSaveMyPertaminaTransactionsThisYear(
                       customers,
                     );
                   },
@@ -811,6 +834,22 @@ class _TransaksiScreenState extends State<TransaksiScreen>
             itemBuilder: (context, index) =>
                 _buildMyPertaminaCard(context, items[index]),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _summaryMetric(BuildContext context, String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
     );
@@ -849,16 +888,18 @@ class _TransaksiScreenState extends State<TransaksiScreen>
               Text('NIK: $nik'),
               Chip(
                 label: Text(
-                  item.isEnriched ? 'NIK Terverifikasi' : 'MyPertamina',
+                  item.isEnriched
+                      ? 'Terverifikasi Master'
+                      : 'Belum Ada di Master',
                 ),
                 backgroundColor: item.isEnriched
                     ? Colors.green.shade100
-                    : Colors.grey.shade200,
+                    : Colors.orange.shade100,
               ),
               if (!item.isEnriched)
                 TextButton(
                   onPressed: () {},
-                  child: const Text('+ Simpan Pelanggan'),
+                  child: const Text('+ Tambah Pelanggan'),
                 ),
             ],
           ),

@@ -12,6 +12,7 @@ class EnrichedMyPertaminaTransaction {
   final int total;
   final DateTime? createdAt;
   final bool isEnriched;
+  final bool hasMasterData;
   final String? customerPhoto;
 
   const EnrichedMyPertaminaTransaction({
@@ -22,6 +23,7 @@ class EnrichedMyPertaminaTransaction {
     required this.total,
     required this.createdAt,
     required this.isEnriched,
+    required this.hasMasterData,
     this.customerPhoto,
   });
 }
@@ -77,6 +79,7 @@ class TransactionProvider extends ChangeNotifier {
           total: _toInt(item['total'] ?? item['quantity']),
           createdAt: date,
           isEnriched: match != null,
+          hasMasterData: match != null,
           customerPhoto: null,
         );
       }).toList();
@@ -88,7 +91,7 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> syncAndSaveMyPertaminaTransactions(
+  Future<void> syncAndSaveMyPertaminaTransactionsThisYear(
     List<Pelanggan> customers,
   ) async {
     isLoading = true;
@@ -97,8 +100,7 @@ class TransactionProvider extends ChangeNotifier {
     try {
       final now = DateTime.now();
       final raw = await _api.fetchMyPertaminaTransactionReport(
-        startDate:
-            '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-01',
+        startDate: '${now.year.toString().padLeft(4, '0')}-01-01',
         endDate:
             '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
       );
@@ -120,17 +122,23 @@ class TransactionProvider extends ChangeNotifier {
                   customer != null && _nikMatches(customer.nik, masked),
               orElse: () => null,
             );
-        final created = (item['createdAt'] ?? '').toString();
-        final id = '${match?.nik ?? masked}_$created'.replaceAll(
-          RegExp(r'[^A-Za-z0-9_-]'),
-          '_',
-        );
+        final created = (item['createdAt'] ?? item['timestamp'] ?? '')
+            .toString();
+        final reportId = (item['customerReportId'] ?? item['id'] ?? '')
+            .toString();
+        final id =
+            '${reportId.isNotEmpty ? reportId : (match?.nik ?? masked)}_$created'
+                .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
         return {
           'documentId': id,
           'name': name,
           'maskedNik': masked,
           'fullNik': match?.nik ?? '',
           'isMatchedWithCustomer': match != null,
+          'isEnriched': match != null,
+          'hasMasterData': match != null,
+          'nationalityId': match?.nik ?? masked,
+          'customerReportId': reportId,
           'category': (item['categories'] ?? item['category'] ?? 'Rumah Tangga')
               .toString(),
           'total': _toInt(item['total'] ?? item['quantity']),
@@ -164,7 +172,12 @@ class TransactionProvider extends ChangeNotifier {
             category: '${item['category'] ?? 'Rumah Tangga'}',
             total: _toInt(item['total']),
             createdAt: DateTime.tryParse('${item['createdAt'] ?? ''}'),
-            isEnriched: item['isMatchedWithCustomer'] == true,
+            isEnriched:
+                item['isEnriched'] == true ||
+                item['isMatchedWithCustomer'] == true,
+            hasMasterData:
+                item['hasMasterData'] == true ||
+                item['isMatchedWithCustomer'] == true,
             customerPhoto: null,
           ),
         )

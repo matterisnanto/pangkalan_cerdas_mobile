@@ -263,12 +263,21 @@ class MyPertaminaApiService {
   );
 
   Future<List<Map<String, dynamic>>> fetchMyPertaminaTransactionReport({
-    required String startDate,
-    required String endDate,
+    String? startDate,
+    String? endDate,
   }) async {
+    final now = DateTime.now();
+    final resolvedStart =
+        startDate ?? '${now.year.toString().padLeft(4, '0')}-01-01';
+    final resolvedEnd = endDate ?? _formatDate(now);
+
     final response = await client.dio.get(
       '/general/v3/transactions/report',
-      queryParameters: {'startDate': startDate, 'endDate': endDate},
+      queryParameters: {
+        'startDate': resolvedStart,
+        'endDate': resolvedEnd,
+        'sort': 'latest',
+      },
     );
     return unwrapList(
       response.data,
