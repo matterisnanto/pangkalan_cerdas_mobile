@@ -119,14 +119,6 @@ class _WebViewScreenState extends State<WebViewScreen>
       })();
     ''',
     );
-    if (!mounted) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _showTopNotification(
-          'Data login [${account['name']}] berhasil terisi!',
-        );
-      }
-    });
   }
 
   Future<void> _showAccountSuggestions() async {
@@ -135,9 +127,6 @@ class _WebViewScreenState extends State<WebViewScreen>
     await _loadAccounts();
     if (!mounted) return;
     if (_accounts.isEmpty) {
-      _showTopNotification(
-        'Belum ada akun pangkalan tersimpan. Tambahkan akun di Pengaturan untuk menggunakan fitur auto-fill.',
-      );
       return;
     }
     if (_isShowingAccountSuggestions) return;
@@ -270,30 +259,6 @@ class _WebViewScreenState extends State<WebViewScreen>
     if (mounted) {
       setState(() {});
     }
-  }
-
-  void _showTopNotification(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.only(
-          top: 10,
-          left: 16,
-          right: 16,
-          bottom: MediaQuery.of(context).size.height - 140,
-        ),
-        backgroundColor: const Color(0xFF00AA5B),
-        content: Text(
-          message,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   @override
