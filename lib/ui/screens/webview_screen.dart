@@ -383,41 +383,6 @@ class _WebViewScreenState extends State<WebViewScreen>
               ),
             ),
           ),
-          if (_isMerchantLogin && _accounts.isNotEmpty)
-            Positioned(
-              top: 58,
-              left: 12,
-              right: 12,
-              child: SafeArea(
-                bottom: false,
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: Material(
-                    color: Colors.white.withValues(alpha: .94),
-                    borderRadius: BorderRadius.circular(12),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<Map<String, String>>(
-                        hint: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text('Pilih Pangkalan untuk Auto-Login'),
-                        ),
-                        items: _accounts
-                            .map(
-                              (account) => DropdownMenuItem(
-                                value: account,
-                                child: Text(account['name'] ?? 'Pangkalan'),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (account) {
-                          if (account != null) _fillAccount(account);
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
           Positioned(
             top: 8,
             left: 8,
@@ -523,7 +488,9 @@ class _WebViewScreenState extends State<WebViewScreen>
   let lastRequestAt = 0;
   function requestSuggestions(e) {
     const target = e.target;
-    if (target && (target.tagName === 'INPUT' || target.type === 'text' || target.type === 'password' || target.name === 'username')) {
+    if (target && target.tagName === 'INPUT' &&
+        (target.type === 'text' || target.type === 'password' ||
+         target.name === 'username' || target.name === 'password')) {
       const now = Date.now();
       if (now - lastRequestAt < 300) return;
       lastRequestAt = now;
