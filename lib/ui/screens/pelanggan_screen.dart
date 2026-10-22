@@ -425,6 +425,51 @@ class _PelangganScreenState extends State<PelangganScreen> {
     );
   }
 
+  Widget _buildQuotaSyncBanner({required bool isDark}) {
+    return Consumer<CustomerProvider>(
+      builder: (context, provider, child) {
+        if (!provider.isSyncingQuota) return const SizedBox.shrink();
+        final total = provider.syncTotalCount;
+        final current = provider.syncCurrentIndex;
+        final progress = total == 0 ? 0.0 : (current / total).clamp(0.0, 1.0);
+        final percent = (progress * 100).round();
+        return AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF064E3B) : const Color(0xFFE6F4EA),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Memperbarui Kuota: $current / $total Pelanggan ($percent%)',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF14532D),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 7,
+                    backgroundColor: isDark ? Colors.white24 : Colors.white,
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00AA5B)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -460,6 +505,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
               textPrimary: textPrimary,
               textSecondary: textSecondary,
             ),
+            _buildQuotaSyncBanner(isDark: isDark),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(

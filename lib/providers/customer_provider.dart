@@ -10,6 +10,9 @@ class CustomerProvider extends ChangeNotifier {
   final AuthProvider _authProvider;
   final SecureStorageService _storage;
   bool _isSyncing = false;
+  bool isSyncingQuota = false;
+  int syncCurrentIndex = 0;
+  int syncTotalCount = 0;
 
   CustomerProvider({
     PelangganService? pelangganService,
@@ -28,11 +31,16 @@ class CustomerProvider extends ChangeNotifier {
     }
 
     _isSyncing = true;
+    isSyncingQuota = true;
+    syncCurrentIndex = 0;
     notifyListeners();
     try {
       final customers = await _pelangganService.getAllPelanggan();
+      syncTotalCount = customers.length;
+      notifyListeners();
       final api = MyPertaminaApiService(_authProvider.apiClient);
-      for (final customer in customers) {
+      for (var i = 0; i < customers.length; i++) {
+        final customer = customers[i];
         try {
           var familyId = customer.familyIdEncrypted;
           if (familyId == null || familyId.isEmpty) {
@@ -60,11 +68,15 @@ class CustomerProvider extends ChangeNotifier {
         } catch (_) {
           // Continue syncing remaining customers when one NIK fails.
         }
+        syncCurrentIndex = i + 1;
         notifyListeners();
         await Future<void>.delayed(const Duration(milliseconds: 250));
       }
     } finally {
       _isSyncing = false;
+      isSyncingQuota = false;
+      syncCurrentIndex = 0;
+      syncTotalCount = 0;
       notifyListeners();
     }
   }
