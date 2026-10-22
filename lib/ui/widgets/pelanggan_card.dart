@@ -88,14 +88,30 @@ class PelangganCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: katColor.withValues(alpha: isDark ? 0.22 : 0.10),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: katColor.withValues(alpha: 0.35)),
+                    Flexible(
+                      child: Wrap(
+                        alignment: WrapAlignment.end,
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          _statusBadge(
+                            pelanggan.displayKategori,
+                            katColor,
+                            isDark,
+                          ),
+                          _statusBadge(
+                            pelanggan.familyIdEncrypted != null &&
+                                    pelanggan.familyIdEncrypted!.trim().isNotEmpty
+                                ? '🟢 ID KK Terverifikasi'
+                                : '🟡 ID KK Belum Ditangkap',
+                            pelanggan.familyIdEncrypted != null &&
+                                    pelanggan.familyIdEncrypted!.trim().isNotEmpty
+                                ? const Color(0xFF00AA5B)
+                                : const Color(0xFFD97706),
+                            isDark,
+                          ),
+                        ],
                       ),
-                      child: Text(pelanggan.displayKategori, style: TextStyle(color: katColor, fontSize: 11, fontWeight: FontWeight.w700)),
                     ),
                   ],
                 ),
@@ -141,6 +157,21 @@ class PelangganCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _statusBadge(String label, Color color, bool isDark) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: isDark ? 0.22 : 0.10),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: color.withValues(alpha: 0.35)),
+    ),
+    child: Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700),
+    ),
+  );
 
   Widget _info(IconData icon, String text, Color color) => Padding(
     padding: const EdgeInsets.only(bottom: 4),
