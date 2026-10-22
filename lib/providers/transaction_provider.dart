@@ -91,7 +91,7 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> syncAndSaveMyPertaminaTransactionsThisYear(
+  Future<int> syncAndSaveMyPertaminaTransactionsThisYear(
     List<Pelanggan> customers,
   ) async {
     isLoading = true;
@@ -151,8 +151,10 @@ class TransactionProvider extends ChangeNotifier {
         data,
       );
       await loadSavedMyPertaminaTransactions();
+      return data.length;
     } catch (e) {
       error = e.toString();
+      rethrow;
     } finally {
       isLoading = false;
       notifyListeners();

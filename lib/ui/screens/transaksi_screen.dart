@@ -10,6 +10,7 @@ import '../../providers/transaction_queue_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../models/pelanggan_model.dart';
 import '../../services/automation_service.dart';
+import '../../services/api_client.dart';
 import '../../services/firebase_service.dart';
 import '../../services/mypertamina_api_service.dart';
 import '../widgets/glass_card.dart';
@@ -229,6 +230,20 @@ class _TransaksiScreenState extends State<TransaksiScreen>
       _showSnack(
         '${failedCustomers.length} transaksi gagal dimasukkan ke antrean.',
       );
+  }
+
+  void _showTopNotification(String message, {bool isError = false}) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Theme.of(context).colorScheme.error : null,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   void _showSnack(String message) {
@@ -803,13 +818,40 @@ class _TransaksiScreenState extends State<TransaksiScreen>
             onPressed: provider.isLoading
                 ? null
                 : () async {
-                    final customers = await _firebase.getAllPelanggan(
-                      context.read<AuthProvider>().registrationId,
-                    );
-                    if (!context.mounted) return;
-                    await provider.syncAndSaveMyPertaminaTransactionsThisYear(
-                      customers,
-                    );
+                    final auth = context.read<AuthProvider>();
+                    if (auth.token == null || auth.token!.isEmpty) {
+                      _showTopNotification(
+                        'Silakan login ke Portal MyPertamina terlebih dahulu di Halaman Portal!',
+                        isError: true,
+                      );
+                      return;
+                    }
+                    try {
+                      final customers = await _firebase.getAllPelanggan(
+                        auth.registrationId,
+                      );
+                      if (!mounted) return;
+                      final count = await provider
+                          .syncAndSaveMyPertaminaTransactionsThisYear(
+                            customers,
+                          );
+                      if (!mounted) return;
+                      _showTopNotification(
+                        'Berhasil menarik $count data transaksi MyPertamina tahun ini!',
+                      );
+                    } on DioException catch (e) {
+                      if (!mounted) return;
+                      _showTopNotification(
+                        ApiClient.parseDioError(e),
+                        isError: true,
+                      );
+                    } catch (e) {
+                      if (!mounted) return;
+                      _showTopNotification(
+                        'Gagal menarik transaksi MyPertamina: $e',
+                        isError: true,
+                      );
+                    }
                   },
             icon: const Icon(Icons.sync),
             label: const Text('Refresh / Tarik Data MyPertamina Terbaru'),

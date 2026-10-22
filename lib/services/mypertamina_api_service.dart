@@ -262,6 +262,8 @@ class MyPertaminaApiService {
     )).data,
   );
 
+  Map<String, dynamic> lastSummaryReport = const {};
+
   Future<List<Map<String, dynamic>>> fetchMyPertaminaTransactionReport({
     String? startDate,
     String? endDate,
@@ -274,14 +276,41 @@ class MyPertaminaApiService {
     final response = await client.dio.get(
       '/general/v3/transactions/report',
       queryParameters: {
+        'search': '',
+        'sort': 'latest',
         'startDate': resolvedStart,
         'endDate': resolvedEnd,
-        'sort': 'latest',
       },
+      options: Options(
+        headers: {
+          'Origin': 'https://subsiditepatlpg.mypertamina.id',
+          'Referer': 'https://subsiditepatlpg.mypertamina.id/',
+          'Accept': 'application/json, text/plain, */*',
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0',
+        },
+      ),
     );
-    return unwrapList(
-      response.data,
-    ).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+    final body = response.data;
+    final responseMap = body is Map
+        ? Map<String, dynamic>.from(body)
+        : const <String, dynamic>{};
+    final data = responseMap['data'] is Map
+        ? Map<String, dynamic>.from(responseMap['data'] as Map)
+        : const <String, dynamic>{};
+    lastSummaryReport = data['summaryReport'] is Map
+        ? Map<String, dynamic>.from(data['summaryReport'] as Map)
+        : const {};
+    final reports = data['customersReport'];
+    if (reports is! List) {
+      throw StateError(
+        'Respons report MyPertamina tidak memiliki data.customersReport',
+      );
+    }
+    return reports
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
   }
 
   Future<List<TransactionReceiptModel>> fetchReport({
