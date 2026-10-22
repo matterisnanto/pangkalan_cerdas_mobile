@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
@@ -28,6 +30,9 @@ class _PelangganScreenState extends State<PelangganScreen> {
   String _selectedKategori = 'Semua';
   bool _isExporting = false;
   bool _isImporting = false;
+  String? _topNotificationMessage;
+  bool _topNotificationIsError = false;
+  Timer? _topNotificationTimer;
 
   @override
   void initState() {
@@ -41,21 +46,88 @@ class _PelangganScreenState extends State<PelangganScreen> {
 
   @override
   void dispose() {
+    _topNotificationTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
 
   void _showSnack(String msg, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: isError
-            ? Colors.red.shade800
-            : const Color(0xFF00AA5B),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    _topNotificationTimer?.cancel();
+    setState(() {
+      _topNotificationMessage = msg;
+      _topNotificationIsError = isError;
+    });
+    _topNotificationTimer = Timer(
+      const Duration(seconds: 3),
+      _dismissTopNotification,
+    );
+  }
+
+  void _dismissTopNotification() {
+    _topNotificationTimer?.cancel();
+    if (!mounted) return;
+    setState(() => _topNotificationMessage = null);
+  }
+
+  Widget _buildTopNotificationBanner({required bool isDark}) {
+    final message = _topNotificationMessage;
+    final isError = _topNotificationIsError;
+    final background = isError
+        ? (isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFFE4E6))
+        : (isDark ? const Color(0xFF064E3B) : const Color(0xFFE6F4EA));
+    final foreground = isError
+        ? (isDark ? Colors.white : const Color(0xFF9F1239))
+        : (isDark ? Colors.white : const Color(0xFF14532D));
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 260),
+      transitionBuilder: (child, animation) => SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, -0.25),
+          end: Offset.zero,
+        ).animate(animation),
+        child: FadeTransition(opacity: animation, child: child),
       ),
+      child: message == null
+          ? const SizedBox.shrink(key: ValueKey('notification-hidden'))
+          : Container(
+              key: ValueKey('$message$isError'),
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+              padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+              decoration: BoxDecoration(
+                color: background,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isError
+                        ? Icons.warning_rounded
+                        : Icons.check_circle_rounded,
+                    color: foreground,
+                    size: 21,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      message,
+                      style: TextStyle(
+                        color: foreground,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _dismissTopNotification,
+                    tooltip: 'Tutup notifikasi',
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(Icons.close, color: foreground, size: 18),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 
@@ -594,6 +666,7 @@ class _PelangganScreenState extends State<PelangganScreen> {
                 ],
               ),
             ),
+            _buildTopNotificationBanner(isDark: isDark),
             _buildQuotaSyncBanner(isDark: isDark),
             Expanded(
               child: StreamBuilder<List<Pelanggan>>(
