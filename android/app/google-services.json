@@ -1,21 +1,22 @@
 {
   "project_info": {
-    "project_number": "123456789012",
+    "project_number": "224454998607",
+    "firebase_url": "https://pangkalan-cerdas-mobile-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "pangkalan-cerdas-mobile",
-    "storage_bucket": "pangkalan-cerdas-mobile.appspot.com"
+    "storage_bucket": "pangkalan-cerdas-mobile.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:123456789012:android:abcdef0123456789abcdef",
+        "mobilesdk_app_id": "1:224454998607:android:830a79737201059c72c83a",
         "android_client_info": {
-          "package_name": "com.example.pangkalan_cerdas_mobile"
+          "package_name": "com.pangkalan_cerdas_mobile"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "dummy_api_key_placeholder_for_build"
+          "current_key": "AIzaSyD9GK5lhnEvpyYpcY4wNRxN6es-gGyrQCI"
         }
       ],
       "services": {

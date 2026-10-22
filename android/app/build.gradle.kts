@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.pangkalan_cerdas_mobile"
+    namespace = "com.pangkalan_cerdas_mobile"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -18,7 +18,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.pangkalan_cerdas_mobile"
+        applicationId = "com.pangkalan_cerdas_mobile"
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

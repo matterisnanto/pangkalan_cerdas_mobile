@@ -127,7 +127,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
       try {
         await context
             .read<TransactionProvider>()
-            .fetchAndEnrichMyPertaminaTransactions(customers);
+            .syncAndSaveMyPertaminaTransactions(customers);
         final report = await MyPertaminaApiService(
           auth.apiClient,
         ).fetchReport();
@@ -791,6 +791,24 @@ class _TransaksiScreenState extends State<TransaksiScreen>
         .toList();
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: FilledButton.icon(
+            onPressed: provider.isLoading
+                ? null
+                : () async {
+                    final customers = await _firebase.getAllPelanggan(
+                      context.read<AuthProvider>().registrationId,
+                    );
+                    if (!context.mounted) return;
+                    await provider.syncAndSaveMyPertaminaTransactions(
+                      customers,
+                    );
+                  },
+            icon: const Icon(Icons.sync),
+            label: const Text('Refresh / Tarik Data MyPertamina Terbaru'),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: TextField(

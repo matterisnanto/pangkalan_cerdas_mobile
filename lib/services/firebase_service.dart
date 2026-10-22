@@ -151,6 +151,37 @@ class FirebaseService {
         );
   }
 
+  CollectionReference<Map<String, dynamic>> _myPertaminaTransactionsCol(
+    String registrationId,
+  ) => _db
+      .collection('pangkalan')
+      .doc(registrationId)
+      .collection('mypertamina_transactions');
+
+  Future<void> upsertMyPertaminaTransactions(
+    String registrationId,
+    List<Map<String, dynamic>> transactions,
+  ) async {
+    final batch = _db.batch();
+    final collection = _myPertaminaTransactionsCol(registrationId);
+    for (final transaction in transactions) {
+      final id = transaction['documentId'].toString();
+      batch.set(collection.doc(id), transaction, SetOptions(merge: true));
+    }
+    if (transactions.isNotEmpty) await batch.commit();
+  }
+
+  Future<List<Map<String, dynamic>>> getMyPertaminaTransactions(
+    String registrationId,
+  ) async {
+    final snapshot = await _myPertaminaTransactionsCol(
+      registrationId,
+    ).orderBy('createdAt', descending: true).get();
+    return snapshot.docs
+        .map((doc) => {...doc.data(), 'documentId': doc.id})
+        .toList();
+  }
+
   Future<void> saveInterceptedTransaction({
     required String registrationId,
     required Map<String, dynamic> payload,

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/pelanggan_model.dart';
 import '../services/mypertamina_api_service.dart';
+import '../services/firebase_service.dart';
 import 'auth_provider.dart';
 
 class EnrichedMyPertaminaTransaction {
@@ -28,6 +29,7 @@ class EnrichedMyPertaminaTransaction {
 class TransactionProvider extends ChangeNotifier {
   final AuthProvider authProvider;
   final MyPertaminaApiService _api;
+  final FirebaseService _firebase = FirebaseService();
   List<EnrichedMyPertaminaTransaction> transactions = [];
   bool isLoading = false;
   String? error;
@@ -84,6 +86,90 @@ class TransactionProvider extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> syncAndSaveMyPertaminaTransactions(
+    List<Pelanggan> customers,
+  ) async {
+    isLoading = true;
+    error = null;
+    notifyListeners();
+    try {
+      final now = DateTime.now();
+      final raw = await _api.fetchMyPertaminaTransactionReport(
+        startDate:
+            '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-01',
+        endDate:
+            '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
+      );
+      final byName = <String, List<Pelanggan>>{};
+      for (final customer in customers) {
+        byName
+            .putIfAbsent(customer.nama.trim().toUpperCase(), () => [])
+            .add(customer);
+      }
+      final data = raw.map((item) {
+        final name = (item['name'] ?? item['customerName'] ?? '').toString();
+        final masked =
+            (item['nationalityId'] ?? item['maskedNik'] ?? item['nik'] ?? '')
+                .toString();
+        final match = (byName[name.trim().toUpperCase()] ?? const <Pelanggan>[])
+            .cast<Pelanggan?>()
+            .firstWhere(
+              (customer) =>
+                  customer != null && _nikMatches(customer.nik, masked),
+              orElse: () => null,
+            );
+        final created = (item['createdAt'] ?? '').toString();
+        final id = '${match?.nik ?? masked}_$created'.replaceAll(
+          RegExp(r'[^A-Za-z0-9_-]'),
+          '_',
+        );
+        return {
+          'documentId': id,
+          'name': name,
+          'maskedNik': masked,
+          'fullNik': match?.nik ?? '',
+          'isMatchedWithCustomer': match != null,
+          'category': (item['categories'] ?? item['category'] ?? 'Rumah Tangga')
+              .toString(),
+          'total': _toInt(item['total'] ?? item['quantity']),
+          'createdAt': created,
+          'registrationId': authProvider.registrationId,
+        };
+      }).toList();
+      await _firebase.upsertMyPertaminaTransactions(
+        authProvider.registrationId,
+        data,
+      );
+      await loadSavedMyPertaminaTransactions();
+    } catch (e) {
+      error = e.toString();
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadSavedMyPertaminaTransactions() async {
+    final data = await _firebase.getMyPertaminaTransactions(
+      authProvider.registrationId,
+    );
+    transactions = data
+        .map(
+          (item) => EnrichedMyPertaminaTransaction(
+            name: '${item['name'] ?? ''}',
+            maskedNik: '${item['maskedNik'] ?? ''}',
+            fullNik: '${item['fullNik'] ?? ''}',
+            category: '${item['category'] ?? 'Rumah Tangga'}',
+            total: _toInt(item['total']),
+            createdAt: DateTime.tryParse('${item['createdAt'] ?? ''}'),
+            isEnriched: item['isMatchedWithCustomer'] == true,
+            customerPhoto: null,
+          ),
+        )
+        .toList();
+    notifyListeners();
   }
 
   static bool _nikMatches(String nik, String masked) {
