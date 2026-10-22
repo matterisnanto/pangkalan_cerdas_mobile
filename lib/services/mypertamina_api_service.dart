@@ -102,25 +102,26 @@ class MyPertaminaApiService {
     String customerType,
   ) async {
     final response = await client.dio.get(
-      '$baseUrl/general/v5/customers/${nik.trim()}/quota',
-      queryParameters: {
-        'familyId': familyIdEncrypted.trim(),
-        'customerType': customerType.trim(),
-      },
+      '$baseUrl/general/v5/customers/${Uri.encodeComponent(nik.trim())}/quota'
+      '?familyId=${Uri.encodeQueryComponent(familyIdEncrypted.trim())}'
+      '&customerType=${Uri.encodeQueryComponent(customerType.trim())}',
     );
     final body = response.data;
     final data = body is Map && body['data'] is Map
         ? Map<String, dynamic>.from(body['data'] as Map)
         : body is Map
         ? Map<String, dynamic>.from(body)
-        : <String, dynamic>{};
+        : const <String, dynamic>{};
     final quotaObj = data['quotaRemaining'];
+    dynamic monthlyQuota = 0;
     if (quotaObj is Map) {
-      final value = quotaObj['monthly'] ?? quotaObj['family'] ?? 0;
-      return value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+      monthlyQuota = quotaObj['monthly'] ?? quotaObj['family'] ?? 0;
+    } else if (quotaObj is num) {
+      monthlyQuota = quotaObj;
     }
-    if (quotaObj is num) return quotaObj.toInt();
-    return 0;
+    return monthlyQuota is num
+        ? monthlyQuota.toInt()
+        : int.tryParse('$monthlyQuota') ?? 0;
   }
 
   /// SMART AUTO-FILL NIK berdasarkan API MyPertamina
