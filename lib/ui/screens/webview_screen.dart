@@ -53,30 +53,46 @@ class _WebViewScreenState extends State<WebViewScreen>
       source:
           '''
       (function() {
+        function setNativeInputValue(element, value) {
+          if (!element) return;
+          const valueSetter = Object.getOwnPropertyDescriptor(element, 'value')?.set;
+          const prototype = Object.getPrototypeOf(element);
+          const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+          if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
+            prototypeValueSetter.call(element, value);
+          } else if (valueSetter) {
+            valueSetter.call(element, value);
+          } else {
+            element.value = value;
+          }
+          element.dispatchEvent(new Event('input', { bubbles: true }));
+          element.dispatchEvent(new Event('change', { bubbles: true }));
+          element.dispatchEvent(new Event('blur', { bubbles: true }));
+        }
         const inputs = document.querySelectorAll('input');
         inputs.forEach(input => {
           if (input.type === 'text' || input.name === 'username' || input.id === 'username') {
-            input.value = $username;
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
+            setNativeInputValue(input, $username);
           }
           if (input.type === 'password' || input.name === 'password' || input.id === 'password') {
-            input.value = $password;
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
+            setNativeInputValue(input, $password);
           }
         });
       })();
     ''',
     );
-    if (mounted) {
-      _showTopNotification(
-        'Data login [${account['name']}] berhasil diisikan!',
-      );
-    }
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _showTopNotification(
+          'Data login [${account['name']}] berhasil terisi!',
+        );
+      }
+    });
   }
 
   Future<void> _showAccountSuggestions() async {
+    if (_isShowingAccountSuggestions) return;
     debugPrint('🔑 [AUTOFILL TRIGGERED] Kolom input login diklik di WebView');
     await _loadAccounts();
     if (!mounted) return;
@@ -504,9 +520,13 @@ class _WebViewScreenState extends State<WebViewScreen>
 (function() {
   if (window.autofillListenerAttached) return;
   window.autofillListenerAttached = true;
+  let lastRequestAt = 0;
   function requestSuggestions(e) {
     const target = e.target;
     if (target && (target.tagName === 'INPUT' || target.type === 'text' || target.type === 'password' || target.name === 'username')) {
+      const now = Date.now();
+      if (now - lastRequestAt < 300) return;
+      lastRequestAt = now;
       if (window.flutter_inappwebview) window.flutter_inappwebview.callHandler('onRequestAccountSuggestions');
     }
   }

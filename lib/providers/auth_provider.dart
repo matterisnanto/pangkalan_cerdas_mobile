@@ -33,7 +33,7 @@ class AuthProvider extends ChangeNotifier {
   void safeNotifyListeners() {
     if (!hasListeners) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (hasListeners) safeNotifyListeners();
+      if (hasListeners) notifyListeners();
     });
   }
 
