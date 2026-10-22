@@ -1079,56 +1079,182 @@ class _TransaksiScreenState extends State<TransaksiScreen>
     BuildContext context,
     EnrichedMyPertaminaTransaction item,
   ) {
+    final theme = Theme.of(context);
+    final isUmkm =
+        item.category.toUpperCase().contains('UMKM') ||
+        item.category.toUpperCase().contains('USAHA MIKRO');
+    final categoryColor = isUmkm ? Colors.deepOrange : Colors.teal;
+    final statusColor = item.isEnriched ? Colors.green : Colors.orange;
     final date = item.createdAt == null
         ? '-'
-        : DateFormat('dd MMM yyyy, HH:mm').format(item.createdAt!.toLocal());
+        : '${DateFormat('dd MMM yyyy, HH:mm').format(item.createdAt!.toLocal())} WIB';
     final nik = item.isEnriched ? item.fullNik : item.maskedNik;
-    return GlassCard(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  item.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+    final initials = item.name.trim().isEmpty
+        ? '?'
+        : item.name
+              .trim()
+              .split(RegExp(r'\s+'))
+              .take(2)
+              .map((part) => part[0].toUpperCase())
+              .join();
+    return Card(
+      elevation: 1,
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: categoryColor.withValues(alpha: .14),
+                  foregroundColor: categoryColor,
+                  child: Text(
+                    initials,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-              Text(date, style: Theme.of(context).textTheme.bodySmall),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text('NIK: $nik'),
-              Chip(
-                label: Text(
-                  item.isEnriched
-                      ? 'Terverifikasi Master'
-                      : 'Belum Ada di Master',
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name.isEmpty ? 'Pelanggan MyPertamina' : item.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        date,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                backgroundColor: item.isEnriched
-                    ? Colors.green.shade100
-                    : Colors.orange.shade100,
-              ),
-              if (!item.isEnriched)
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('+ Tambah Pelanggan'),
+                const SizedBox(width: 8),
+                _transactionChip(
+                  Icons.storefront,
+                  isUmkm ? 'Usaha Mikro' : 'Rumah Tangga',
+                  categoryColor,
                 ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text('${item.category} • ${item.total} tabung LPG 3kg'),
-        ],
+              ],
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Text(
+                  'NIK: $nik',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                _transactionChip(
+                  item.isEnriched ? Icons.verified : Icons.info_outline,
+                  item.isEnriched ? 'Terverifikasi Master' : 'Belum di Master',
+                  statusColor,
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withValues(alpha: .10),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.local_gas_station, color: Colors.teal),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            '${item.total} Tabung LPG 3kg',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.teal,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (!item.isEnriched) ...[
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Tambahkan pelanggan melalui menu Master Pelanggan.',
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.person_add_alt_1, size: 16),
+                    label: const Text('Tambah ke Master'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.orange.shade800,
+                      side: BorderSide(color: Colors.orange.shade300),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  Widget _transactionChip(IconData icon, String label, Color color) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _buildLogCard(
     BuildContext context,
