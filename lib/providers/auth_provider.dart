@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/pangkalan.dart';
 import '../models/mypertamina_models.dart';
@@ -31,6 +30,18 @@ class AuthProvider extends ChangeNotifier {
     _loadSavedState();
   }
 
+  void safeNotifyListeners() {
+    if (!hasListeners) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (hasListeners) safeNotifyListeners();
+    });
+  }
+
+  Future<void> savePangkalanAccount(List<Map<String, String>> accounts) async {
+    await _storage.savePangkalanAccounts(jsonEncode(accounts));
+    safeNotifyListeners();
+  }
+
   String? get token => _token;
   Pangkalan? get pangkalan => _pangkalan;
   bool get isLoading => _isLoading;
@@ -46,7 +57,7 @@ class AuthProvider extends ChangeNotifier {
     _profile = null;
     _isTokenValid = false;
     await _storage.clearSession();
-    notifyListeners();
+    safeNotifyListeners();
     onTokenExpired?.call();
   }
 
@@ -74,7 +85,7 @@ class AuthProvider extends ChangeNotifier {
     }
     _token = token;
     _isTokenValid = true;
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   String get registrationId => _pangkalan?.registrationId ?? '';
@@ -90,7 +101,7 @@ class AuthProvider extends ChangeNotifier {
     if (!_isTokenValid || _isStockLoading) return null;
     _isStockLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    safeNotifyListeners();
     try {
       final product = await MyPertaminaApiService(
         _apiClient,
@@ -102,7 +113,7 @@ class AuthProvider extends ChangeNotifier {
       return null;
     } finally {
       _isStockLoading = false;
-      notifyListeners();
+      safeNotifyListeners();
     }
   }
 
@@ -117,7 +128,7 @@ class AuthProvider extends ChangeNotifier {
       current.lastSyncAt = DateTime.now();
       await _firebaseService.savePangkalan(current);
     }
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   Future<void> _loadSavedState() async {
@@ -128,7 +139,7 @@ class AuthProvider extends ChangeNotifier {
       _pangkalan = await _firebaseService.getPangkalan(regId);
     }
     await fetchUserProfile();
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   /// Called when WebView interceptor captures a Bearer token.
@@ -138,7 +149,7 @@ class AuthProvider extends ChangeNotifier {
     await _storage.saveToken(token);
     _token = token;
     _isTokenValid = !_isJwtExpired(token);
-    notifyListeners();
+    safeNotifyListeners();
     if (!_isTokenValid) return;
     await Future.wait([fetchUserProfile(), fetchProductAndStockFromApi()]);
   }
@@ -147,7 +158,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> fetchUserProfile() async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    safeNotifyListeners();
 
     try {
       final data = await MyPertaminaApiService(_apiClient).fetchProfile();
@@ -188,19 +199,19 @@ class AuthProvider extends ChangeNotifier {
       _errorMessage = e.toString();
     } finally {
       _isLoading = false;
-      notifyListeners();
+      safeNotifyListeners();
     }
   }
 
   void clearError() {
     _errorMessage = null;
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   Future<void> logout() async {
     _token = null;
     _pangkalan = null;
     await _storage.clearAll();
-    notifyListeners();
+    safeNotifyListeners();
   }
 }

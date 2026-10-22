@@ -44,8 +44,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _saveAccounts() =>
-      _storage.savePangkalanAccounts(jsonEncode(_accounts));
+  Future<void> _saveAccounts() async {
+    await context.read<AuthProvider>().savePangkalanAccount(_accounts);
+  }
 
   Future<void> _editAccount([int? index]) async {
     final account = index == null ? null : _accounts[index];
@@ -108,11 +109,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     });
     await _saveAccounts();
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Akun pangkalan berhasil disimpan!')),
+        );
+      }
+    });
   }
 
   Future<void> _deleteAccount(int index) async {
     setState(() => _accounts.removeAt(index));
     await _saveAccounts();
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Akun pangkalan dihapus!')),
+        );
+      }
+    });
   }
 
   Future<void> _clearSession() async {
