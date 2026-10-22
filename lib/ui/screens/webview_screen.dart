@@ -1,4 +1,7 @@
 import 'dart:collection';
+import 'dart:convert';
+
+import '../../services/secure_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
@@ -19,9 +22,82 @@ class _WebViewScreenState extends State<WebViewScreen>
   bool _isLoading = true;
   double _loadProgress = 0;
   bool _tokenCaptured = false;
+  bool _isMerchantLogin = false;
+  List<Map<String, String>> _accounts = [];
+  final _storage = SecureStorageService();
+
+  Future<void> _loadAccounts() async {
+    final raw = await _storage.readPangkalanAccounts();
+    if (raw == null || raw.isEmpty) return;
+    try {
+      _accounts = (jsonDecode(raw) as List)
+          .map((item) => Map<String, String>.from(item as Map))
+          .toList();
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  Future<void> _fillAccount(Map<String, String> account) async {
+    final controller = _controller;
+    if (controller == null) return;
+    final username = jsonEncode(account['username'] ?? '');
+    final password = jsonEncode(account['password'] ?? '');
+    await controller.evaluateJavascript(
+      source:
+          '''
+      (function() {
+        const usernameInput = document.querySelector('input[type="text"]') || document.querySelector('input[name="username"]');
+        const passwordInput = document.querySelector('input[type="password"]') || document.querySelector('input[name="password"]');
+        if (usernameInput && passwordInput) {
+          usernameInput.value = $username;
+          usernameInput.dispatchEvent(new Event('input', { bubbles: true }));
+          passwordInput.value = $password;
+          passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+          return true;
+        }
+        return false;
+      })();
+    ''',
+    );
+    if (mounted) {
+      _showTopNotification(
+        'Data login [${account['name']}] berhasil diisikan!',
+      );
+    }
+  }
+
+  void _showTopNotification(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          top: 10,
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.of(context).size.height - 140,
+        ),
+        backgroundColor: const Color(0xFF00AA5B),
+        content: Text(
+          message,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAccounts();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +163,10 @@ class _WebViewScreenState extends State<WebViewScreen>
                     source:
                         "document.documentElement.style.paddingBottom = '120px';",
                   );
+                  final login = url?.path == '/merchant-login';
+                  if (login != _isMerchantLogin && mounted) {
+                    setState(() => _isMerchantLogin = login);
+                  }
                   if (url.toString() ==
                           'https://subsiditepatlpg.mypertamina.id/' ||
                       url.toString() ==
@@ -119,6 +199,41 @@ class _WebViewScreenState extends State<WebViewScreen>
               ),
             ),
           ),
+          if (_isMerchantLogin && _accounts.isNotEmpty)
+            Positioned(
+              top: 58,
+              left: 12,
+              right: 12,
+              child: SafeArea(
+                bottom: false,
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: Material(
+                    color: Colors.white.withValues(alpha: .94),
+                    borderRadius: BorderRadius.circular(12),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<Map<String, String>>(
+                        hint: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text('Pilih Pangkalan untuk Auto-Login'),
+                        ),
+                        items: _accounts
+                            .map(
+                              (account) => DropdownMenuItem(
+                                value: account,
+                                child: Text(account['name'] ?? 'Pangkalan'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (account) {
+                          if (account != null) _fillAccount(account);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             top: 8,
             left: 8,

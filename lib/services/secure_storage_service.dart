@@ -5,6 +5,13 @@ class SecureStorageService {
   static const _registrationIdKey = 'registration_id';
   static const _storeNameKey = 'store_name';
   static const _delayKey = 'transaction_delay_seconds';
+  static const pangkalanAccountsKey = 'pangkalan_accounts_json';
+
+  Future<String?> readPangkalanAccounts() =>
+      _storage.read(key: pangkalanAccountsKey);
+
+  Future<void> savePangkalanAccounts(String json) =>
+      _storage.write(key: pangkalanAccountsKey, value: json);
   static const _profilePrefix = 'pangkalan_profile_';
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage(

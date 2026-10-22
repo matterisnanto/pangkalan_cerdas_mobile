@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -19,6 +21,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   int _delay = 3;
   bool _busy = false;
+  List<Map<String, String>> _accounts = [];
+  final _storage = SecureStorageService();
   @override
   void initState() {
     super.initState();
@@ -26,8 +30,89 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    _delay = await SecureStorageService().getTransactionDelay();
+    _delay = await _storage.getTransactionDelay();
+    final raw = await _storage.readPangkalanAccounts();
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        _accounts = (jsonDecode(raw) as List)
+            .map((item) => Map<String, String>.from(item as Map))
+            .toList();
+      } catch (_) {
+        _accounts = [];
+      }
+    }
     if (mounted) setState(() {});
+  }
+
+  Future<void> _saveAccounts() =>
+      _storage.savePangkalanAccounts(jsonEncode(_accounts));
+
+  Future<void> _editAccount([int? index]) async {
+    final account = index == null ? null : _accounts[index];
+    final name = TextEditingController(text: account?['name']);
+    final username = TextEditingController(text: account?['username']);
+    final password = TextEditingController(text: account?['password']);
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          index == null ? 'Tambah Akun Pangkalan' : 'Edit Akun Pangkalan',
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(labelText: 'Nama Pangkalan'),
+              ),
+              TextField(
+                controller: username,
+                decoration: const InputDecoration(
+                  labelText: 'Username / Email / No HP',
+                ),
+              ),
+              TextField(
+                controller: password,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, {
+              'name': name.text.trim(),
+              'username': username.text.trim(),
+              'password': password.text,
+            }),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+    name.dispose();
+    username.dispose();
+    password.dispose();
+    if (result == null || result.values.any((value) => value.isEmpty)) return;
+    setState(() {
+      if (index == null) {
+        _accounts.add(result);
+      } else {
+        _accounts[index] = result;
+      }
+    });
+    await _saveAccounts();
+  }
+
+  Future<void> _deleteAccount(int index) async {
+    setState(() => _accounts.removeAt(index));
+    await _saveAccounts();
   }
 
   Future<void> _clearSession() async {
@@ -148,6 +233,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onPressed: _clearSession,
                     icon: const Icon(Icons.delete_outline),
                     label: const Text('Hapus Cache Sesi'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            GlassCard(
+              child: Column(
+                children: [
+                  ListTile(
+                    title: const Text('Manajemen Akun Pangkalan'),
+                    subtitle: Text(
+                      '${_accounts.length} akun tersimpan terenkripsi',
+                    ),
+                    leading: const Icon(Icons.manage_accounts_outlined),
+                    trailing: IconButton(
+                      onPressed: () => _editAccount(),
+                      icon: const Icon(Icons.add),
+                    ),
+                  ),
+                  ..._accounts.asMap().entries.map(
+                    (entry) => ListTile(
+                      dense: true,
+                      title: Text(entry.value['name'] ?? ''),
+                      subtitle: Text(entry.value['username'] ?? ''),
+                      leading: const Icon(Icons.store_outlined),
+                      trailing: Wrap(
+                        children: [
+                          IconButton(
+                            onPressed: () => _editAccount(entry.key),
+                            icon: const Icon(Icons.edit_outlined),
+                          ),
+                          IconButton(
+                            onPressed: () => _deleteAccount(entry.key),
+                            icon: const Icon(Icons.delete_outline),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
