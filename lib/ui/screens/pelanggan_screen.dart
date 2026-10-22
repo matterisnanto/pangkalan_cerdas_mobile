@@ -457,11 +457,19 @@ class _PelangganScreenState extends State<PelangganScreen> {
                 const SizedBox(height: 9),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 7,
-                    backgroundColor: isDark ? Colors.white24 : Colors.white,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00AA5B)),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0, end: progress),
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                    builder: (context, animatedProgress, child) =>
+                        LinearProgressIndicator(
+                      value: animatedProgress,
+                      minHeight: 7,
+                      backgroundColor: isDark ? Colors.white24 : Colors.white,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Color(0xFF00AA5B),
+                      ),
+                    ),
                   ),
                 ),
               ],

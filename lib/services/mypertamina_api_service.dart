@@ -102,10 +102,10 @@ class MyPertaminaApiService {
     String customerType,
   ) async {
     final response = await client.dio.get(
-      '$baseUrl/general/v5/customers/$nik/quota',
+      '$baseUrl/general/v5/customers/${nik.trim()}/quota',
       queryParameters: {
-        'familyId': familyIdEncrypted,
-        'customerType': customerType,
+        'familyId': familyIdEncrypted.trim(),
+        'customerType': customerType.trim(),
       },
     );
     final body = response.data;

@@ -54,6 +54,7 @@ class CustomerProvider extends ChangeNotifier {
                     ? verified.familyIdEncrypted
                     : verified.familyId;
               }
+              familyId = familyId.trim();
               if (familyId.isEmpty) return;
               final quota = await api.fetchCustomerQuota(
                 customer.nik,
