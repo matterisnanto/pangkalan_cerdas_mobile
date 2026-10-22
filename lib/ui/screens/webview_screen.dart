@@ -28,10 +28,14 @@ class _WebViewScreenState extends State<WebViewScreen>
   String _tempUsername = '';
   String _tempPassword = '';
   String? _lastProcessedDashboardUrl;
+  bool _isShowingAccountSuggestions = false;
 
   Future<void> _loadAccounts() async {
     final raw = await _storage.readPangkalanAccounts();
-    if (raw == null || raw.isEmpty) return;
+    if (raw == null || raw.isEmpty) {
+      _accounts = [];
+      return;
+    }
     try {
       _accounts = (jsonDecode(raw) as List)
           .map((item) => Map<String, String>.from(item as Map))
@@ -49,16 +53,19 @@ class _WebViewScreenState extends State<WebViewScreen>
       source:
           '''
       (function() {
-        const usernameInput = document.querySelector('input[type="text"]') || document.querySelector('input[name="username"]');
-        const passwordInput = document.querySelector('input[type="password"]') || document.querySelector('input[name="password"]');
-        if (usernameInput && passwordInput) {
-          usernameInput.value = $username;
-          usernameInput.dispatchEvent(new Event('input', { bubbles: true }));
-          passwordInput.value = $password;
-          passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
-          return true;
-        }
-        return false;
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+          if (input.type === 'text' || input.name === 'username' || input.id === 'username') {
+            input.value = $username;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          if (input.type === 'password' || input.name === 'password' || input.id === 'password') {
+            input.value = $password;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
       })();
     ''',
     );
@@ -70,82 +77,96 @@ class _WebViewScreenState extends State<WebViewScreen>
   }
 
   Future<void> _showAccountSuggestions() async {
-    if (!mounted || _accounts.isEmpty) return;
-    final account = await showModalBottomSheet<Map<String, String>>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.lock_outline, color: Color(0xFF00AA5B)),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Pilih Akun Pangkalan untuk Login',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Tutup',
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(sheetContext),
-                  ),
-                ],
-              ),
-              const Divider(),
-              ..._accounts.map(
-                (account) => Card(
-                  elevation: 0,
-                  color: const Color(0xFFF4F8F6),
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFDDF5E8),
-                      child: Icon(Icons.key, color: Color(0xFF00AA5B)),
-                    ),
-                    title: Text(
-                      account['name'] ?? 'Pangkalan',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(account['username'] ?? ''),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDDF5E8),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'Tersimpan',
+    debugPrint('🔑 [AUTOFILL TRIGGERED] Kolom input login diklik di WebView');
+    await _loadAccounts();
+    if (!mounted) return;
+    if (_accounts.isEmpty) {
+      _showTopNotification(
+        'Belum ada akun pangkalan tersimpan. Tambahkan akun di Pengaturan untuk menggunakan fitur auto-fill.',
+      );
+      return;
+    }
+    if (_isShowingAccountSuggestions) return;
+    _isShowingAccountSuggestions = true;
+    try {
+      final account = await showModalBottomSheet<Map<String, String>>(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (sheetContext) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.lock_outline, color: Color(0xFF00AA5B)),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Pilih Akun Pangkalan untuk Login',
                         style: TextStyle(
-                          color: Color(0xFF087F45),
-                          fontSize: 11,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    onTap: () => Navigator.pop(sheetContext, account),
+                    IconButton(
+                      tooltip: 'Tutup',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(sheetContext),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                ..._accounts.map(
+                  (account) => Card(
+                    elevation: 0,
+                    color: const Color(0xFFF4F8F6),
+                    child: ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFDDF5E8),
+                        child: Icon(Icons.key, color: Color(0xFF00AA5B)),
+                      ),
+                      title: Text(
+                        account['name'] ?? 'Pangkalan',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(account['username'] ?? ''),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDDF5E8),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'Tersimpan',
+                          style: TextStyle(
+                            color: Color(0xFF087F45),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                      onTap: () => Navigator.pop(sheetContext, account),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
-    if (account != null) await _fillAccount(account);
+      );
+      if (account != null) await _fillAccount(account);
+    } finally {
+      _isShowingAccountSuggestions = false;
+    }
   }
 
   Future<void> _captureManualLogin(List<dynamic> args) async {
@@ -481,20 +502,16 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   static const String _autofillFocusListenerScript = '''
 (function() {
-  if (window.__pcAutofillInterval) clearInterval(window.__pcAutofillInterval);
-  function attachAutofillListener() {
-    const inputs = document.querySelectorAll('input[type="text"], input[type="password"], input[name="username"], input[name="password"]');
-    inputs.forEach(input => {
-      if (!input.dataset.autofillAttached) {
-        input.dataset.autofillAttached = "true";
-        input.addEventListener('focus', function() {
-          if (window.flutter_inappwebview) window.flutter_inappwebview.callHandler('onRequestAccountSuggestions');
-        });
-      }
-    });
+  if (window.autofillListenerAttached) return;
+  window.autofillListenerAttached = true;
+  function requestSuggestions(e) {
+    const target = e.target;
+    if (target && (target.tagName === 'INPUT' || target.type === 'text' || target.type === 'password' || target.name === 'username')) {
+      if (window.flutter_inappwebview) window.flutter_inappwebview.callHandler('onRequestAccountSuggestions');
+    }
   }
-  attachAutofillListener();
-  window.__pcAutofillInterval = setInterval(attachAutofillListener, 1000);
+  document.addEventListener('focusin', requestSuggestions);
+  document.addEventListener('click', requestSuggestions);
 })();
 ''';
 
