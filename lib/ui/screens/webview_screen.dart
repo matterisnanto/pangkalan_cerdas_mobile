@@ -69,6 +69,85 @@ class _WebViewScreenState extends State<WebViewScreen>
     }
   }
 
+  Future<void> _showAccountSuggestions() async {
+    if (!mounted || _accounts.isEmpty) return;
+    final account = await showModalBottomSheet<Map<String, String>>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.lock_outline, color: Color(0xFF00AA5B)),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Pilih Akun Pangkalan untuk Login',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Tutup',
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(sheetContext),
+                  ),
+                ],
+              ),
+              const Divider(),
+              ..._accounts.map(
+                (account) => Card(
+                  elevation: 0,
+                  color: const Color(0xFFF4F8F6),
+                  child: ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Color(0xFFDDF5E8),
+                      child: Icon(Icons.key, color: Color(0xFF00AA5B)),
+                    ),
+                    title: Text(
+                      account['name'] ?? 'Pangkalan',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(account['username'] ?? ''),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDDF5E8),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Tersimpan',
+                        style: TextStyle(
+                          color: Color(0xFF087F45),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    onTap: () => Navigator.pop(sheetContext, account),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (account != null) await _fillAccount(account);
+  }
+
   Future<void> _captureManualLogin(List<dynamic> args) async {
     if (args.length < 2) return;
     final username = args[0]?.toString().trim() ?? '';
@@ -86,6 +165,7 @@ class _WebViewScreenState extends State<WebViewScreen>
       setState(() => _isMerchantLogin = isLogin);
     }
     if (isLogin) {
+      await controller.evaluateJavascript(source: _autofillFocusListenerScript);
       await controller.evaluateJavascript(source: _manualLoginListenerScript);
       return;
     }
@@ -195,6 +275,12 @@ class _WebViewScreenState extends State<WebViewScreen>
                       final token = (args.first as String).trim();
                       if (token.isEmpty) return;
                       await _handleTokenCaptured(token);
+                    },
+                  );
+                  controller.addJavaScriptHandler(
+                    handlerName: 'onRequestAccountSuggestions',
+                    callback: (args) async {
+                      await _showAccountSuggestions();
                     },
                   );
                   controller.addJavaScriptHandler(
@@ -390,6 +476,25 @@ class _WebViewScreenState extends State<WebViewScreen>
     if (String(name).toLowerCase() === 'authorization') capture(value);
     return originalSetRequestHeader.apply(this, arguments);
   };
+})();
+''';
+
+  static const String _autofillFocusListenerScript = '''
+(function() {
+  if (window.__pcAutofillInterval) clearInterval(window.__pcAutofillInterval);
+  function attachAutofillListener() {
+    const inputs = document.querySelectorAll('input[type="text"], input[type="password"], input[name="username"], input[name="password"]');
+    inputs.forEach(input => {
+      if (!input.dataset.autofillAttached) {
+        input.dataset.autofillAttached = "true";
+        input.addEventListener('focus', function() {
+          if (window.flutter_inappwebview) window.flutter_inappwebview.callHandler('onRequestAccountSuggestions');
+        });
+      }
+    });
+  }
+  attachAutofillListener();
+  window.__pcAutofillInterval = setInterval(attachAutofillListener, 1000);
 })();
 ''';
 
