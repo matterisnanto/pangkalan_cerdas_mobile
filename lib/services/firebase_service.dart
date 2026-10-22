@@ -158,17 +158,79 @@ class FirebaseService {
       .doc(registrationId)
       .collection('mypertamina_transactions');
 
+  static String _sanitizeDocId(String rawId, String fallbackKey) {
+    final value = rawId.trim().isEmpty ? fallbackKey : rawId;
+    final sanitized = value.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    return sanitized.isEmpty
+        ? 'transaction_${DateTime.now().microsecondsSinceEpoch}'
+        : sanitized;
+  }
+
+  static dynamic _sanitizeFirestoreValue(dynamic value, {String? key}) {
+    if (value == null) return null;
+    if (key == 'createdAt') {
+      if (value is Timestamp) return value;
+      if (value is DateTime) return Timestamp.fromDate(value);
+      final parsed = DateTime.tryParse(value.toString());
+      if (parsed != null) return Timestamp.fromDate(parsed);
+      return value.toString();
+    }
+    if (value is String ||
+        value is num ||
+        value is bool ||
+        value is Timestamp) {
+      return value;
+    }
+    if (value is DateTime) return Timestamp.fromDate(value);
+    if (value is List) {
+      return value
+          .map((item) => _sanitizeFirestoreValue(item))
+          .where((item) => item != null)
+          .toList();
+    }
+    if (value is Map) {
+      final result = <String, dynamic>{};
+      value.forEach((rawKey, rawValue) {
+        final cleanKey = rawKey
+            .toString()
+            .replaceAll(RegExp(r'[.\\/\\[\\]]'), '_')
+            .trim();
+        if (cleanKey.isEmpty || rawValue == null) return;
+        final cleanValue = _sanitizeFirestoreValue(rawValue, key: cleanKey);
+        if (cleanValue != null &&
+            !(cleanValue is String && cleanValue.isEmpty)) {
+          result[cleanKey] = cleanValue;
+        }
+      });
+      return result;
+    }
+    return value.toString();
+  }
+
   Future<void> upsertMyPertaminaTransactions(
     String registrationId,
     List<Map<String, dynamic>> transactions,
   ) async {
-    final batch = _db.batch();
+    const batchSize = 400;
     final collection = _myPertaminaTransactionsCol(registrationId);
-    for (final transaction in transactions) {
-      final id = transaction['documentId'].toString();
-      batch.set(collection.doc(id), transaction, SetOptions(merge: true));
+    for (var i = 0; i < transactions.length; i += batchSize) {
+      final end = (i + batchSize < transactions.length)
+          ? i + batchSize
+          : transactions.length;
+      final batch = _db.batch();
+      for (final transaction in transactions.sublist(i, end)) {
+        final rawId = transaction['customerReportId']?.toString() ?? '';
+        final fallback =
+            '${transaction['nationalityId'] ?? ''}_${transaction['createdAt'] ?? ''}';
+        final docId = _sanitizeDocId(rawId, fallback);
+        final data = Map<String, dynamic>.from(
+          _sanitizeFirestoreValue(transaction) as Map,
+        );
+        data['documentId'] = docId;
+        batch.set(collection.doc(docId), data, SetOptions(merge: true));
+      }
+      if (end > i) await batch.commit();
     }
-    if (transactions.isNotEmpty) await batch.commit();
   }
 
   Future<List<Map<String, dynamic>>> getMyPertaminaTransactions(
