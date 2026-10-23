@@ -373,23 +373,10 @@ class _WebViewScreenState extends State<WebViewScreen>
                         final data = Map<String, dynamic>.from(
                           args.first as Map,
                         );
-                        debugPrint(
-                          '📩 [V5 CUSTOMER HANDLER] NIK: ${data['nik']}',
-                        );
-                        await context
-                            .read<CustomerProvider>()
+                        debugPrint('📩 [FLUTTER JS HANDLER] Event Customer Captured Diterima: $args');
+                        await context.read<CustomerProvider>()
                             .autoSaveCustomerFromPortalQuota(data);
-                        final auth = context.read<AuthProvider>();
-                        final customers = await FirebaseService()
-                            .getAllPelanggan(auth.registrationId);
-                        await context
-                            .read<TransactionProvider>()
-                            .syncAndSaveMyPertaminaTransactionsThisYear(
-                              customers,
-                            );
-                        debugPrint(
-                          '✅ [AUTO-CAPTURE V5] Pelanggan NIK ${data['nik']} berhasil disimpan ke Master Pelanggan!',
-                        );
+                        debugPrint('✅ [SQLITE SUCCESS] Customer ${data['nik']} tersimpan/ter-update.');
                       } catch (e, stackTrace) {
                         debugPrint(
                           '❌ [V5 CUSTOMER HANDLER ERROR]: $e\n$stackTrace',
@@ -411,20 +398,13 @@ class _WebViewScreenState extends State<WebViewScreen>
                         final decoded = jsonDecode(args.first as String);
                         if (decoded is! Map) return;
                         final txData = Map<String, dynamic>.from(decoded);
-                        await context
-                            .read<CustomerProvider>()
-                            .autoSaveCustomerFromPortalTransaction(txData);
                         final auth = context.read<AuthProvider>();
-                        final customers = await FirebaseService()
-                            .getAllPelanggan(auth.registrationId);
-                        await context
-                            .read<TransactionProvider>()
-                            .syncAndSaveMyPertaminaTransactionsThisYear(
-                              customers,
-                            );
-                        debugPrint(
-                          '✅ [AUTO-CAPTURE] Pelanggan baru & transaksi manual berhasil tersimpan di Firestore!',
-                        );
+                        final registrationId = auth.registrationId ?? 'PANGKALAN_DEFAULT';
+                        await context.read<TransactionProvider>()
+                            .saveCapturedTransactionToLocal(registrationId, txData);
+                        await context.read<CustomerProvider>()
+                            .autoSaveCustomerFromTransactionPayload(txData);
+                        debugPrint('✅ [SQLITE SUCCESS] Transaksi & pelanggan tersimpan lokal.');
                       } catch (e, stackTrace) {
                         debugPrint('❌ [AUTO-CAPTURE] $e\n$stackTrace');
                       }
@@ -699,7 +679,20 @@ class _WebViewScreenState extends State<WebViewScreen>
     try {
       var parsed = typeof body === 'string' ? JSON.parse(body) : body;
       var jsonString = JSON.stringify(parsed);
-      if (url.indexOf('/general/v5/customers/') >= 0 && url.indexOf('/quota') >= 0 && String(method).toUpperCase() === 'GET') {
+      if ((url.indexOf('/general/v5/customers/') >= 0 && url.indexOf('/quota') >= 0) || url.indexOf('/general/customer-service/v1/verify-nik') >= 0 || url.indexOf('/customers/v2/verify-nik') >= 0) {
+         var parsedUrl = new URL(url, window.location.href);
+         var customerMatch = parsedUrl.pathname.match(/(?:customers\/|verify-nik\/)([0-9]{16})/);
+         var nik = (customerMatch && customerMatch[1]) || parsedUrl.searchParams.get('nationalityId') || parsedUrl.searchParams.get('nik') || '';
+         if (!/^\\d{16}$/.test(nik) && parsed && parsed.data) nik = parsed.data.nationalityId || parsed.data.nik || '';
+         if (/^\\d{16}$/.test(nik)) {
+           var customer = parsed.data || parsed;
+           var capturedCustomer = { nik: nik, familyId: parsedUrl.searchParams.get('familyId') || customer.familyId || '', category: parsedUrl.searchParams.get('customerType') || customer.customerType || 'Rumah Tangga', name: customer.name || customer.customerName || '', remainingQuota: customer.remainingQuota || 0, address: customer.address || '', phoneNumber: customer.phoneNumber || '' };
+           console.log("📦 [JS CAPTURED CUSTOMER]:", JSON.stringify(capturedCustomer));
+           window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', capturedCustomer);
+         }
+         return;
+       }
+       if (url.indexOf('/general/v5/customers/') >= 0 && url.indexOf('/quota') >= 0 && String(method).toUpperCase() === 'GET') {
         var parsedUrl = new URL(url, window.location.href);
         var customerMatch = parsedUrl.pathname.match(/\/customers\/([0-9]{16})\/quota/);
         if (customerMatch) {

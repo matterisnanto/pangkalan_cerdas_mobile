@@ -269,6 +269,29 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> saveCapturedTransactionToLocal(
+    String registrationId,
+    Map<String, dynamic> txData,
+  ) async {
+    final nik = '${txData['nationalityId'] ?? txData['nik'] ?? ''}'.trim();
+    final createdAt = '${txData['createdAt'] ?? DateTime.now().toIso8601String()}';
+    final id = '${txData['transactionId'] ?? ''}'.trim().isNotEmpty
+        ? '${txData['transactionId']}'.trim()
+        : '${registrationId}_${nik}_$createdAt';
+    debugPrint('💾 [SQLITE TRANSACTION] Upsert id=$id nik=$nik');
+    await _database.upsertTransaction({
+      'id': id,
+      'registrationId': registrationId,
+      'nationalityId': nik,
+      'name': txData['name'] ?? txData['customerName'] ?? '',
+      'categories': txData['categories'] ?? txData['customerType'] ?? 'Rumah Tangga',
+      'totalQuantity': txData['totalQuantity'] ?? txData['quantity'] ?? 0,
+      'createdAt': createdAt,
+    });
+    await loadSavedMyPertaminaTransactions(registrationId);
+    notifyListeners();
+  }
+
   Future<void> loadSavedMyPertaminaTransactions(String? registrationId) async {
     if (registrationId == null || registrationId.trim().isEmpty) {
       debugPrint(

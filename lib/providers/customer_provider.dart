@@ -69,9 +69,28 @@ class CustomerProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> autoSaveCustomerFromTransactionPayload(
+    Map<String, dynamic> txData,
+  ) async {
+    final nik = '${txData['nationalityId'] ?? txData['nik'] ?? ''}'.trim();
+    if (!RegExp(r'^\d{16}$').hasMatch(nik)) {
+      debugPrint('⚠️ [TRANSACTION CUSTOMER] NIK tidak valid: $nik');
+      return;
+    }
+    await autoSaveCustomerFromPortalQuota({
+      'nik': nik,
+      'name': txData['name'] ?? txData['customerName'] ?? '',
+      'category': txData['categories'] ?? txData['customerType'] ?? 'Rumah Tangga',
+      'familyId': txData['familyId'] ?? '',
+      'remainingQuota': txData['remainingQuota'] ?? 0,
+      'phoneNumber': txData['phoneNumber'] ?? '',
+      'address': txData['address'] ?? '',
+    });
+  }
+
   Future<void> autoSaveCustomerFromPortalTransaction(
     Map<String, dynamic> txData,
-  ) => autoSaveCustomerFromPortal(txData);
+  ) => autoSaveCustomerFromTransactionPayload(txData);
 
   Future<void> autoSaveCustomerFromPortal(
     Map<String, dynamic> portalData,
