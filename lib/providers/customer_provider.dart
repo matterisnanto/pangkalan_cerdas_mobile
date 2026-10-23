@@ -41,7 +41,8 @@ class CustomerProvider extends ChangeNotifier {
       debugPrint('⚠️ [V5 CUSTOMER] NIK tidak valid: $nik');
       return;
     }
-    final name = '${data['name'] ?? ''}'.trim();
+    final nama = data['nama']?.toString().trim() ?? '';
+    final name = nama.isNotEmpty ? nama : (data['name']?.toString().trim() ?? '');
     final familyId = '${data['familyId'] ?? ''}'.trim();
     final category = Pelanggan.normalizeKategori('${data['category'] ?? ''}');
     final remainingQuota = data['remainingQuota'] is num
