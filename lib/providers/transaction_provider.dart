@@ -1,10 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:developer' as developer;
 import '../models/pelanggan_model.dart';
 import '../services/mypertamina_api_service.dart';
-import '../services/firebase_service.dart';
+import '../services/local_database_service.dart';
 import 'auth_provider.dart';
 
 class EnrichedMyPertaminaTransaction {
@@ -34,7 +33,7 @@ class EnrichedMyPertaminaTransaction {
 class TransactionProvider extends ChangeNotifier {
   final AuthProvider authProvider;
   final MyPertaminaApiService _api;
-  final FirebaseService _firebase = FirebaseService();
+  final LocalDatabaseService _database = LocalDatabaseService.instance;
   List<EnrichedMyPertaminaTransaction> transactions = [];
   bool isLoading = false;
   String? error;
@@ -235,14 +234,22 @@ class TransactionProvider extends ChangeNotifier {
           'registrationId': authProvider.registrationId,
         };
       }).toList();
-      await _firebase.upsertMyPertaminaTransactions(
-        authProvider.registrationId,
-        data,
-      );
+      for (final item in data) {
+        await _database.upsertTransaction({
+          'id': item['documentId'],
+          'registrationId': item['registrationId'],
+          'customerReportId': item['customerReportId'],
+          'nationalityId': item['nationalityId'],
+          'name': item['name'],
+          'categories': item['category'],
+          'totalQuantity': item['total'],
+          'createdAt': item['createdAt'],
+        });
+      }
       debugPrint(
-        '✅ [TRANSACTION PROVIDER] ${data.length} transaksi tersimpan ke Firestore.',
+        '✅ [TRANSACTION PROVIDER] ${data.length} transaksi tersimpan ke SQLite.',
       );
-      await _firebase.autoCleanDuplicates(authProvider.registrationId);
+      await _database.autoCleanDuplicateTransactions(authProvider.registrationId);
       await loadSavedMyPertaminaTransactions(authProvider.registrationId);
       return data.length;
     } catch (e, stackTrace) {
@@ -270,21 +277,17 @@ class TransactionProvider extends ChangeNotifier {
       return;
     }
     final normalizedRegistrationId = registrationId.trim();
-    await _firebase.autoCleanDuplicates(normalizedRegistrationId);
-    final data = await _firebase.getMyPertaminaTransactions(
-      normalizedRegistrationId,
-    );
+    await _database.autoCleanDuplicateTransactions(normalizedRegistrationId);
+    final data = await _database.getTransactions(normalizedRegistrationId);
     transactions = data
         .map(
           (item) => EnrichedMyPertaminaTransaction(
             name: '${item['name'] ?? ''}',
-            maskedNik: '${item['maskedNik'] ?? ''}',
-            fullNik: '${item['fullNik'] ?? ''}',
-            category: '${item['category'] ?? 'Rumah Tangga'}',
-            total: _toInt(item['total']),
-            createdAt: item['createdAt'] is Timestamp
-                ? (item['createdAt'] as Timestamp).toDate()
-                : DateTime.tryParse('${item['createdAt'] ?? ''}'),
+            maskedNik: '${item['nationalityId'] ?? ''}',
+            fullNik: '${item['nationalityId'] ?? ''}',
+            category: '${item['categories'] ?? 'Rumah Tangga'}',
+            total: _toInt(item['totalQuantity']),
+            createdAt: DateTime.tryParse('${item['createdAt'] ?? ''}'),
             isEnriched:
                 item['isEnriched'] == true ||
                 item['isMatchedWithCustomer'] == true,

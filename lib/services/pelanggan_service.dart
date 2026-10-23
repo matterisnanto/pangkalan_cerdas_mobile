@@ -1,163 +1,70 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/pelanggan_model.dart';
 import '../models/log_transaksi.dart';
+import 'local_database_service.dart';
 
 class PelangganService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final LocalDatabaseService _db = LocalDatabaseService.instance;
 
-  CollectionReference<Map<String, dynamic>> get _collection =>
-      _db.collection('pelanggan');
+  Map<String, dynamic> _toRow(Pelanggan p) => {
+        'nik': p.nik,
+        'nama': p.nama,
+        'category': p.kategori,
+        'familyId': p.familyIdEncrypted ?? p.encryptedFamilyId,
+        'remainingQuota': p.sisaKuotaBulanan,
+        'isEnriched': (p.familyIdEncrypted ?? p.encryptedFamilyId)?.isNotEmpty == true ? 1 : 0,
+        'updatedAt': (p.lastSyncedAt ?? p.lastQuotaUpdate ?? p.createdAt ?? DateTime.now()).toIso8601String(),
+      };
 
-  /// Stream of all customers with optional search and category filters
-  Stream<List<Pelanggan>> streamPelanggan({String? search, String? kategori}) {
-    Query<Map<String, dynamic>> query = _collection;
+  Pelanggan _fromRow(Map<String, dynamic> row) => Pelanggan(
+        id: '${row['nik']}',
+        nik: '${row['nik'] ?? ''}',
+        nama: '${row['nama'] ?? ''}',
+        kategori: '${row['category'] ?? 'Rumah Tangga'}',
+        familyIdEncrypted: row['familyId'] as String?,
+        encryptedFamilyId: row['familyId'] as String?,
+        sisaKuota: (row['remainingQuota'] as num? ?? 0).toInt(),
+        sisaKuotaBulanan: (row['remainingQuota'] as num? ?? 0).toInt(),
+        lastSyncedAt: DateTime.tryParse('${row['updatedAt'] ?? ''}'),
+      );
 
-    if (kategori != null &&
-        kategori.isNotEmpty &&
-        kategori != 'Semua' &&
-        kategori != 'SEMUA') {
-      final normalized = Pelanggan.normalizeKategori(kategori);
-      query = query.where('kategori', isEqualTo: normalized);
-    }
-
-    return query.snapshots().map((snapshot) {
-      final list = snapshot.docs.map((doc) {
-        return Pelanggan.fromJson(doc.data(), docId: doc.id);
-      }).toList();
-
-      // Local search filtering (by NIK or Nama)
-      if (search != null && search.trim().isNotEmpty) {
-        final q = search.trim().toLowerCase();
-        return list.where((p) {
-          final nikMatch = p.nik.toLowerCase().contains(q);
-          final namaMatch = p.nama.toLowerCase().contains(q);
-          return nikMatch || namaMatch;
-        }).toList();
-      }
-
-      list.sort((a, b) => a.nama.toLowerCase().compareTo(b.nama.toLowerCase()));
-      return list;
-    });
+  Stream<List<Pelanggan>> streamPelanggan({String? search, String? kategori}) async* {
+    yield (await _db.getCustomers(search: search, category: kategori))
+        .map(_fromRow).toList();
   }
 
-  /// Get all customers as a Future list
-  Future<List<Pelanggan>> getAllPelanggan() async {
-    final snap = await _collection.get();
-    final list = snap.docs
-        .map((d) => Pelanggan.fromJson(d.data(), docId: d.id))
-        .toList();
-    list.sort((a, b) => a.nama.toLowerCase().compareTo(b.nama.toLowerCase()));
-    return list;
-  }
+  Future<List<Pelanggan>> getAllPelanggan() async =>
+      (await _db.getCustomers()).map(_fromRow).toList();
 
-  /// Get single customer by Firestore doc ID
-  Future<Pelanggan?> getPelangganById(String id) async {
-    final doc = await _collection.doc(id).get();
-    if (!doc.exists || doc.data() == null) return null;
-    return Pelanggan.fromJson(doc.data()!, docId: doc.id);
-  }
+  Future<Pelanggan?> getPelangganById(String id) async => getPelangganByNik(id);
 
-  /// Get single customer by NIK
   Future<Pelanggan?> getPelangganByNik(String nik) async {
-    final snap = await _collection.where('nik', isEqualTo: nik).limit(1).get();
-    if (snap.docs.isEmpty) return null;
-    final d = snap.docs.first;
-    return Pelanggan.fromJson(d.data(), docId: d.id);
+    final rows = await _db.getCustomers(search: nik);
+    for (final row in rows) {
+      if (row['nik'] == nik) return _fromRow(row);
+    }
+    return null;
   }
 
-  /// Add new customer to centralized 'pelanggan' collection
   Future<String> addPelanggan(Pelanggan pelanggan) async {
-    // If document with same NIK exists, update it, else add
-    final existing = await _collection
-        .where('nik', isEqualTo: pelanggan.nik)
-        .limit(1)
-        .get();
-    if (existing.docs.isNotEmpty) {
-      final docId = existing.docs.first.id;
-      await _collection
-          .doc(docId)
-          .set(pelanggan.toJson(), SetOptions(merge: true));
-      return docId;
-    }
-    final docRef = await _collection.add(pelanggan.toJson());
-    return docRef.id;
+    await _db.upsertCustomer(_toRow(pelanggan));
+    return pelanggan.nik;
   }
 
-  /// Update existing customer
   Future<void> updatePelanggan(Pelanggan pelanggan) async {
-    if (pelanggan.id != null && pelanggan.id!.isNotEmpty) {
-      await _collection
-          .doc(pelanggan.id)
-          .set(pelanggan.toJson(), SetOptions(merge: true));
-    } else {
-      // Find by NIK
-      final snap = await _collection
-          .where('nik', isEqualTo: pelanggan.nik)
-          .limit(1)
-          .get();
-      if (snap.docs.isNotEmpty) {
-        await _collection
-            .doc(snap.docs.first.id)
-            .set(pelanggan.toJson(), SetOptions(merge: true));
-      } else {
-        await _collection.add(pelanggan.toJson());
-      }
-    }
+    await _db.upsertCustomer(_toRow(pelanggan));
   }
 
-  /// Delete customer by ID or NIK
   Future<void> deletePelanggan(String id) async {
-    await _collection.doc(id).delete();
+    final db = await _db.database;
+    await db.delete('customers', where: 'nik = ?', whereArgs: [id]);
   }
 
-  /// Batch import customers into Firestore
   Future<int> importBatch(List<Pelanggan> list) async {
-    if (list.isEmpty) return 0;
-    final batch = _db.batch();
-    int count = 0;
-
-    for (final p in list) {
-      if (p.nik.trim().isEmpty) continue;
-      // Use NIK as doc ID for deterministic upsert in batch
-      final docRef = _collection.doc(p.nik.trim());
-      batch.set(docRef, p.toJson(), SetOptions(merge: true));
-      count++;
+    for (final customer in list) {
+      if (customer.nik.trim().isNotEmpty) await _db.upsertCustomer(_toRow(customer));
     }
-
-    await batch.commit();
-    return count;
+    return list.where((p) => p.nik.trim().isNotEmpty).length;
   }
 
-  /// Fetch transaction history for this customer by NIK
-  Future<List<LogTransaksi>> getCustomerTransactions(String nik) async {
-    final List<LogTransaksi> logs = [];
-    try {
-      // Query collectionGroup or root collections for log_transaksi matching NIK
-      final snap = await _db
-          .collectionGroup('log_transaksi')
-          .where('nik', isEqualTo: nik)
-          .get();
-
-      for (final doc in snap.docs) {
-        logs.add(LogTransaksi.fromJson(doc.data(), docId: doc.id));
-      }
-    } catch (_) {
-      // Fallback if collectionGroup index is not built yet: try pangkalan log collections
-      try {
-        final pangkalanSnap = await _db.collection('pangkalan').get();
-        for (final pDoc in pangkalanSnap.docs) {
-          final subSnap = await pDoc.reference
-              .collection('log_transaksi')
-              .where('nik', isEqualTo: nik)
-              .get();
-          for (final doc in subSnap.docs) {
-            logs.add(LogTransaksi.fromJson(doc.data(), docId: doc.id));
-          }
-        }
-      } catch (_) {}
-    }
-
-    logs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-    return logs;
-  }
+  Future<List<LogTransaksi>> getCustomerTransactions(String nik) async => [];
 }

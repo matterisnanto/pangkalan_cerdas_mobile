@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/customer_provider.dart';
@@ -8,6 +7,7 @@ import 'providers/transaction_queue_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/notification_service.dart';
+import 'services/local_database_service.dart';
 import 'ui/screens/pelanggan_screen.dart';
 import 'ui/screens/webview_screen.dart';
 import 'ui/screens/transaksi_screen.dart';
@@ -19,12 +19,16 @@ import 'ui/theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // FASE 3: Initialize Firebase Firestore with offline persistence
+  try {
+    await LocalDatabaseService.instance.database;
+    debugPrint('✅ [SQLITE INIT SUCCESS] Database lokal SQLite siap!');
+  } catch (e, stack) {
+    debugPrint('⚠️ [SQLITE INIT ERROR]: $e\n$stack');
+  }
+
+  // Firebase remains available for authentication and non-storage services.
   try {
     await Firebase.initializeApp();
-    FirebaseFirestore.instance.settings = const Settings(
-      persistenceEnabled: true,
-    );
   } catch (e) {
     debugPrint('Firebase init error: $e');
   }
