@@ -683,8 +683,8 @@ class _WebViewScreenState extends State<WebViewScreen>
          var parsedUrl = new URL(url, window.location.href);
          var customerMatch = parsedUrl.pathname.match(/(?:customers\/|verify-nik\/)([0-9]{16})/);
          var nik = (customerMatch && customerMatch[1]) || parsedUrl.searchParams.get('nationalityId') || parsedUrl.searchParams.get('nik') || '';
-         if (!/^[0-9]{16}$/.test(nik) && parsed && parsed.data) nik = parsed.data.nationalityId || parsed.data.nik || '';
-         if (/^[0-9]{16}$/.test(nik)) {
+         if (!/^[0-9]{16}\$/.test(nik) && parsed && parsed.data) nik = parsed.data.nationalityId || parsed.data.nik || '';
+         if (/^[0-9]{16}\$/.test(nik)) {
            var customer = parsed.data || parsed;
            var capturedCustomer = { nik: nik, familyId: parsedUrl.searchParams.get('familyId') || customer.familyId || '', category: parsedUrl.searchParams.get('customerType') || customer.customerType || 'Rumah Tangga', name: customer.name || customer.customerName || '', remainingQuota: customer.remainingQuota || 0, address: customer.address || '', phoneNumber: customer.phoneNumber || '' };
            console.log("📦 [JS CAPTURED CUSTOMER]:", JSON.stringify(capturedCustomer));
