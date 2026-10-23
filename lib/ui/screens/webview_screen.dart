@@ -711,6 +711,33 @@ class _WebViewScreenState extends State<WebViewScreen>
        if (url.indexOf('/general/v5/customers/') >= 0 && url.indexOf('/quota') >= 0 && String(method).toUpperCase() === 'GET') {
          console.log('🔍 [JS STEP 1] URL Quota Terdeteksi:', url);
          console.log('🔍 [JS STEP 2] Response JSON Diterima:', JSON.stringify(parsed));
+         var nik = '';
+         try { var nikMatch = url.match(/\\b\\d{16}\\b/); if (nikMatch && nikMatch[0]) nik = nikMatch[0]; }
+         catch (e) { console.log('❌ [JS ERROR STEP 3 NIK]:', e && e.toString ? e.toString() : e); }
+         console.log('🔍 [JS STEP 3] Extracted NIK:', nik);
+         try {
+           var familyId = '';
+           var category = '';
+           try { var urlObj = new URL(url, window.location.href); familyId = urlObj.searchParams.get('familyId') || ''; category = urlObj.searchParams.get('customerType') || ''; }
+           catch (e) { console.log('⚠️ [JS URL PARSE WARNING]:', e && e.toString ? e.toString() : e); }
+           var responseData = parsed && parsed.data ? parsed.data : parsed;
+           var extractedName = 'Pelanggan ' + nik;
+           var extractedQuota = 0;
+           if (responseData && responseData.name) extractedName = responseData.name;
+           if (responseData && typeof responseData.remainingQuota !== 'undefined') extractedQuota = responseData.remainingQuota;
+           var payload = { nik: nik, familyId: familyId, category: category || 'Rumah Tangga', name: extractedName, remainingQuota: extractedQuota, isEnriched: 1 };
+           console.log('🔍 [JS STEP 4] Payload Siap Dikirim ke Flutter:', JSON.stringify(payload));
+           if (nik && nik.length === 16) {
+             if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+               window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload);
+               console.log("✅ [JS STEP 5] Handler 'onMyPertaminaCustomerCaptured' BERHASIL DIPANGGIL!");
+             } else console.log('❌ [JS ERROR STEP 5] window.flutter_inappwebview.callHandler TIDAK TERSEDIA!');
+           } else console.log('⚠️ [JS CANCELLED] NIK tidak valid / panjang bukan 16 digit:', nik);
+         } catch (postStep3Error) {
+           console.log('❌ [JS CRITICAL ERROR AFTER STEP 3]:', postStep3Error && postStep3Error.toString ? postStep3Error.toString() : postStep3Error, postStep3Error && postStep3Error.stack ? postStep3Error.stack : '');
+         }
+         return;
+
 
         var parsedUrl = new URL(url, window.location.href);
         var customerMatch = parsedUrl.pathname.match(/\/customers\/([0-9]{16})\/quota/);
