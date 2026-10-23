@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../models/pelanggan_model.dart';
 import '../services/mypertamina_api_service.dart';
+import '../services/local_database_service.dart';
 import '../services/pelanggan_service.dart';
 import '../services/secure_storage_service.dart';
 import 'auth_provider.dart';
@@ -60,9 +61,20 @@ class CustomerProvider extends ChangeNotifier {
                 sisaKuota: remainingQuota,
                 sisaKuotaBulanan: remainingQuota,
               );
+      final customerData = {
+        'nik': customer.nik,
+        'nama': customer.nama,
+        'category': customer.kategori,
+        'familyId': customer.familyIdEncrypted ?? customer.encryptedFamilyId,
+        'remainingQuota': customer.sisaKuotaBulanan ?? 0,
+        'isEnriched': 1,
+        'updatedAt': DateTime.now().toIso8601String(),
+      };
+      await LocalDatabaseService.instance.upsertCustomer(customerData);
       await _pelangganService.addPelanggan(customer);
-      debugPrint('✅ [V5 CUSTOMER] Pelanggan tersimpan: $nik');
-      safeNotifyListeners();
+      await _pelangganService.getAllPelanggan();
+      debugPrint('✅ [V5 CUSTOMER] Pelanggan tersimpan dan daftar SQLite dimuat ulang: $nik');
+      notifyListeners();
     } catch (e, stackTrace) {
       debugPrint('❌ [V5 CUSTOMER SAVE ERROR]: $e\n$stackTrace');
       rethrow;

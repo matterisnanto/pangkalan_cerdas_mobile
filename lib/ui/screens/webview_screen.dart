@@ -370,10 +370,13 @@ class _WebViewScreenState extends State<WebViewScreen>
                     callback: (args) async {
                       if (args.isEmpty || args.first is! Map) return;
                       try {
-                        final data = Map<String, dynamic>.from(
-                          args.first as Map,
-                        );
-                        debugPrint('📩 [FLUTTER JS HANDLER] Event Customer Captured Diterima: $args');
+                        final data = Map<String, dynamic>.from(args.first as Map);
+                        final nik = '${data['nik'] ?? ''}';
+                        if (nik.length != 16) {
+                          debugPrint('⚠️ [CUSTOMER CAPTURE] NIK tidak valid: $nik');
+                          return;
+                        }
+                        debugPrint('📩 [FLUTTER RECEIVED CUSTOMER]: $args');
                         debugPrint('🎯 [AUTO-SAVE CUSTOMER SQLITE] NIK: ${data["nik"]} | Nama: ${data["name"]} | Kuota: ${data["remainingQuota"]}');
                         await context.read<CustomerProvider>()
                             .autoSaveCustomerFromPortalQuota(data);
@@ -686,7 +689,12 @@ class _WebViewScreenState extends State<WebViewScreen>
       if ((url.indexOf('/general/v5/customers/') >= 0 && url.indexOf('/quota') >= 0) || url.indexOf('/general/customer-service/v1/verify-nik') >= 0 || url.indexOf('/customers/v2/verify-nik') >= 0) {
          var parsedUrl = new URL(url, window.location.href);
          var customerMatch = parsedUrl.pathname.match(/(?:customers\/|verify-nik\/)([0-9]{16})/);
-         var nik = (customerMatch && customerMatch[1]) || parsedUrl.searchParams.get('nationalityId') || parsedUrl.searchParams.get('nik') || '';
+         var nik = '';
+         try {
+           var pathParts = url.split('/customers/');
+           if (pathParts.length > 1) nik = pathParts[1].split('/quota')[0].trim();
+         } catch (e) {}
+         nik = nik || (customerMatch && customerMatch[1]) || parsedUrl.searchParams.get('nationalityId') || parsedUrl.searchParams.get('nik') || '';
          if (!/^[0-9]{16}\$/.test(nik) && parsed && parsed.data) nik = parsed.data.nationalityId || parsed.data.nik || '';
          if (/^[0-9]{16}\$/.test(nik)) {
            var customer = parsed.data || parsed;
