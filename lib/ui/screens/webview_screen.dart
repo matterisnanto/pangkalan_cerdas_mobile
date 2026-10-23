@@ -374,6 +374,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                           args.first as Map,
                         );
                         debugPrint('📩 [FLUTTER JS HANDLER] Event Customer Captured Diterima: $args');
+                        debugPrint('🎯 [NIK CAPTURED] NIK: ${data["nik"]} | Nama: ${data["name"]} | Kuota: ${data["remainingQuota"]}');
                         await context.read<CustomerProvider>()
                             .autoSaveCustomerFromPortalQuota(data);
                         debugPrint('✅ [SQLITE SUCCESS] Customer ${data['nik']} tersimpan/ter-update.');
@@ -387,15 +388,15 @@ class _WebViewScreenState extends State<WebViewScreen>
                   controller.addJavaScriptHandler(
                     handlerName: 'onMyPertaminaTransactionCaptured',
                     callback: (args) async {
-                      if (args.isEmpty || args.first is! String) return;
+                      if (args.isEmpty) return;
                       debugPrint(
                         '📩 [FLUTTER JS HANDLER] Event transaksi manual diterima dari WebView!',
                       );
-                      debugPrint(
-                        '📦 [WEBVIEW CAPTURED PAYLOAD]: ${args.first}',
-                      );
+                      debugPrint('📦 [WEBVIEW CAPTURED PAYLOAD]: ${args.first}');
                       try {
-                        final decoded = jsonDecode(args.first as String);
+                        final decoded = args.first is String
+                            ? jsonDecode(args.first as String)
+                            : args.first;
                         if (decoded is! Map) return;
                         final txData = Map<String, dynamic>.from(decoded);
                         final auth = context.read<AuthProvider>();
@@ -668,7 +669,7 @@ class _WebViewScreenState extends State<WebViewScreen>
 })();
 ''';
 
-  static const String _transactionBridgeScript = '''
+  static const String _transactionBridgeScript = r'''
 (function() {
   if (window.__pcTransactionBridge) return;
   window.__pcTransactionBridge = true;
@@ -710,7 +711,7 @@ class _WebViewScreenState extends State<WebViewScreen>
         return;
       }
       if (String(method).toUpperCase() !== 'POST' ||
-          (url.indexOf('/general/v2/transactions') < 0 && url.indexOf('/general/v3/transactions') < 0)) return;
+          (url.indexOf('/general/v2/transactions') < 0 && url.indexOf('/general/v3/transactions') < 0 && url.indexOf('/sale/pay-cash') < 0)) return;
       console.log('📦 [WEBVIEW CAPTURED PAYLOAD]: ' + jsonString);
       window.flutter_inappwebview.callHandler('onMyPertaminaTransactionCaptured', jsonString);
     } catch (error) { console.log('❌ [WEBVIEW INTERCEPTOR ERROR]: ' + error); }
