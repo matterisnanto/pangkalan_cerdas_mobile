@@ -687,6 +687,8 @@ class _WebViewScreenState extends State<WebViewScreen>
       var parsed = typeof body === 'string' ? JSON.parse(body) : body;
       var jsonString = JSON.stringify(parsed);
       if ((url.indexOf('/general/v5/customers/') >= 0 && url.indexOf('/quota') >= 0) || url.indexOf('/general/customer-service/v1/verify-nik') >= 0 || url.indexOf('/customers/v2/verify-nik') >= 0) {
+         console.log('🔍 [JS STEP 1] URL Quota/Verify Terdeteksi:', url);
+         console.log('🔍 [JS STEP 2] Response JSON Diterima:', JSON.stringify(parsed));
          var parsedUrl = new URL(url, window.location.href);
          var customerMatch = parsedUrl.pathname.match(/(?:customers\/|verify-nik\/)([0-9]{16})/);
          var nik = '';
@@ -695,6 +697,8 @@ class _WebViewScreenState extends State<WebViewScreen>
            if (pathParts.length > 1) nik = pathParts[1].split('/quota')[0].trim();
          } catch (e) {}
          nik = nik || (customerMatch && customerMatch[1]) || parsedUrl.searchParams.get('nationalityId') || parsedUrl.searchParams.get('nik') || '';
+          console.log('🔍 [JS STEP 3] Extracted NIK:', nik);
+
          if (!/^[0-9]{16}\$/.test(nik) && parsed && parsed.data) nik = parsed.data.nationalityId || parsed.data.nik || '';
          if (/^[0-9]{16}\$/.test(nik)) {
            var customer = parsed.data || parsed;

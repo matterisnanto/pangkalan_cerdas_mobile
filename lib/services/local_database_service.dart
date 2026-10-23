@@ -67,6 +67,7 @@ class LocalDatabaseService {
       );
 
   Future<void> upsertCustomer(Map<String, dynamic> data) async {
+    print('💾 [SQLITE STEP 1] Membuka koneksi database...');
     final row = Map<String, dynamic>.from(data);
     final nik = '${row['nik'] ?? ''}'.trim();
     if (nik.isEmpty) throw ArgumentError('Customer NIK wajib diisi');
@@ -77,8 +78,15 @@ class LocalDatabaseService {
         : int.tryParse('${row['remainingQuota'] ?? row['sisaKuota'] ?? 0}') ?? 0;
     row['isEnriched'] = row['isEnriched'] == true || row['isEnriched'] == 1 ? 1 : 0;
     row['updatedAt'] ??= DateTime.now().toIso8601String();
-    await (await database).insert('customers', row,
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    print('💾 [SQLITE STEP 2] CONFLICT_REPLACE NIK: ${row['nik']} | Row: $row');
+    try {
+      final result = await (await database).insert('customers', row,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+      print('✅ [SQLITE STEP 3] Insert/Replace berhasil. Row ID: $result');
+    } catch (e, stack) {
+      print('❌ [SQLITE EXCEPTION] Gagal insert customers: $e\n$stack');
+      rethrow;
+    }
   }
 
   Future<List<Map<String, dynamic>>> getCustomers({String? search, String? category}) async {

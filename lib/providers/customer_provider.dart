@@ -35,6 +35,7 @@ class CustomerProvider extends ChangeNotifier {
   Future<void> autoSaveCustomerFromPortalQuota(
     Map<String, dynamic> data,
   ) async {
+    debugPrint('⚙️ [PROVIDER STEP 1] Menerima data di CustomerProvider: $data');
     final nik = '${data['nik'] ?? ''}'.trim();
     if (!RegExp(r'^\d{16}$').hasMatch(nik)) {
       debugPrint('⚠️ [V5 CUSTOMER] NIK tidak valid: $nik');
@@ -70,7 +71,9 @@ class CustomerProvider extends ChangeNotifier {
         'isEnriched': 1,
         'updatedAt': DateTime.now().toIso8601String(),
       };
+      debugPrint('⚙️ [PROVIDER STEP 2] Menyimpan ke SQLite: $customerData');
       await LocalDatabaseService.instance.upsertCustomer(customerData);
+      debugPrint('✅ [PROVIDER STEP 3] Upsert SQLite sukses: $nik');
       await _pelangganService.addPelanggan(customer);
       await _pelangganService.getAllPelanggan();
       debugPrint('✅ [V5 CUSTOMER] Pelanggan tersimpan dan daftar SQLite dimuat ulang: $nik');
