@@ -374,7 +374,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                           args.first as Map,
                         );
                         debugPrint('📩 [FLUTTER JS HANDLER] Event Customer Captured Diterima: $args');
-                        debugPrint('🎯 [NIK CAPTURED] NIK: ${data["nik"]} | Nama: ${data["name"]} | Kuota: ${data["remainingQuota"]}');
+                        debugPrint('🎯 [AUTO-SAVE CUSTOMER SQLITE] NIK: ${data["nik"]} | Nama: ${data["name"]} | Kuota: ${data["remainingQuota"]}');
                         await context.read<CustomerProvider>()
                             .autoSaveCustomerFromPortalQuota(data);
                         debugPrint('✅ [SQLITE SUCCESS] Customer ${data['nik']} tersimpan/ter-update.');
@@ -674,9 +674,12 @@ class _WebViewScreenState extends State<WebViewScreen>
   if (window.__pcTransactionBridge) return;
   window.__pcTransactionBridge = true;
   console.log('🌐 [WEBVIEW JS] Interceptor aktif & mendengarkan Fetch/XHR request...');
-  function forward(method, url, body, status) {
+  function isStatic(url) { return /\\.(css|js|png|jpg|svg|woff)(\\?|$)/i.test(String(url || '')); }
+  function forward(method, url, body, status, contentType, requestBody) {
     console.log('🌐 [WEBVIEW API CALL] Request URL: ' + url + ' | Status: ' + status);
-    if (!url || !body || (status !== 200 && status !== 201)) return;
+    if (!url || isStatic(url) || !body || (status !== 200 && status !== 201)) return;
+    var isApi = String(url).indexOf('api-map.my-pertamina.id') >= 0;
+    if (!isApi && String(contentType || '').toLowerCase().indexOf('application/json') < 0) return;
     try {
       var parsed = typeof body === 'string' ? JSON.parse(body) : body;
       var jsonString = JSON.stringify(parsed);
@@ -721,14 +724,15 @@ class _WebViewScreenState extends State<WebViewScreen>
     var method = (arguments[1] && arguments[1].method) || (input && input.method) || 'GET';
     return originalFetch.apply(this, arguments).then(function(response) {
       const clone=response.clone();
-      clone.text().then(function(body){ forward(method, response.url, body, response.status); });
+      var contentType = response.headers && response.headers.get('content-type');
+      clone.text().then(function(body){ forward(method, response.url, body, response.status, contentType); });
       return response;
     });
   };
   const originalOpen = XMLHttpRequest.prototype.open;
   const originalSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function(method, url) { this.__pcMethod=method; this.__pcUrl=url; return originalOpen.apply(this, arguments); };
-  XMLHttpRequest.prototype.send = function() { this.addEventListener('load', function(){ forward(this.__pcMethod, this.__pcUrl, this.responseText, this.status); }); return originalSend.apply(this, arguments); };
+  XMLHttpRequest.prototype.send = function() { this.__pcRequestBody=arguments[0]; this.addEventListener('load', function(){ forward(this.__pcMethod, this.__pcUrl, this.responseText, this.status, this.getResponseHeader('content-type'), this.__pcRequestBody); }); return originalSend.apply(this, arguments); };
 })();
 ''';
 
