@@ -709,12 +709,15 @@ class _WebViewScreenState extends State<WebViewScreen>
          return;
        }
        if (url.indexOf('/general/v5/customers/') >= 0 && url.indexOf('/quota') >= 0 && String(method).toUpperCase() === 'GET') {
+         console.log('🔍 [JS STEP 1] URL Quota Terdeteksi:', url);
+         console.log('🔍 [JS STEP 2] Response JSON Diterima:', JSON.stringify(parsed));
+
         var parsedUrl = new URL(url, window.location.href);
         var customerMatch = parsedUrl.pathname.match(/\/customers\/([0-9]{16})\/quota/);
         if (customerMatch) {
           var captured = {
             nik: customerMatch[1],
-            familyId: parsedUrl.searchParams.get('familyId') || '',
+            familyId: (function() { var raw = ''; try { raw = parsedUrl.searchParams.get('familyId') || ''; } catch (e) { console.log('⚠️ [JS URL PARSE FALLBACK]:', e && e.message ? e.message : e); } try { return raw ? decodeURIComponent(raw) : ''; } catch (e) { console.log('⚠️ [JS FAMILY ID DECODE FALLBACK]:', e && e.message ? e.message : e); return raw; } })(),
             category: parsedUrl.searchParams.get('customerType') || 'Rumah Tangga',
             name: parsed && parsed.data ? parsed.data.name || '' : '',
             remainingQuota: parsed && parsed.data ? parsed.data.remainingQuota || 0 : 0,
