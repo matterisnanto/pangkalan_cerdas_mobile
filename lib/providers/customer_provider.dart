@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:sqflite/sqflite.dart';
 
 import '../models/pelanggan_model.dart';
 import '../services/mypertamina_api_service.dart';
@@ -37,7 +38,7 @@ class CustomerProvider extends ChangeNotifier {
       final nik = data['nik']?.toString().trim() ?? '';
       if (nik.length != 16) return;
 
-      final db = await database;
+      final db = await LocalDatabaseService.instance.database;
 
       // 1. Ambil data eksisting dari SQLite jika NIK sudah ada
       final existingRows = await db.query(
@@ -105,7 +106,6 @@ class CustomerProvider extends ChangeNotifier {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
-      await loadCustomers();
       notifyListeners();
       debugPrint('✅ [SQLITE SMART SAVE SUCCESS] NIK $nik | Nama: $finalNama | FamID: $finalFamilyId | Kuota: $finalQuota');
     } catch (e, stack) {
