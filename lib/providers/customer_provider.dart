@@ -48,56 +48,49 @@ class CustomerProvider extends ChangeNotifier {
         limit: 1,
       );
 
-      String currentNama = '';
-      String currentFamilyId = '';
-      int currentQuota = 0;
-      String currentCategory = 'Rumah Tangga';
+      String finalNama = 'Pelanggan $nik';
+      String finalFamilyId = '';
+      int finalQuota = 0;
+      String finalCategory = 'Rumah Tangga';
 
       if (existingRows.isNotEmpty) {
         final old = existingRows.first;
-        currentNama = old['nama']?.toString() ?? '';
-        currentFamilyId = old['familyId']?.toString() ?? '';
-        currentQuota = (old['remainingQuota'] as num?)?.toInt() ?? 0;
-        currentCategory = old['category']?.toString() ?? 'Rumah Tangga';
+        finalNama = old['nama']?.toString() ?? '';
+        finalFamilyId = old['familyId']?.toString() ?? '';
+        finalQuota = (old['remainingQuota'] as num?)?.toInt() ?? 0;
+        finalCategory = old['category']?.toString() ?? 'Rumah Tangga';
       }
 
-      // 2. Evaluasi Nama Asli
+      // 1. Evaluasi Nama Asli
       final incomingNama = data['nama']?.toString() ?? data['name']?.toString() ?? '';
       if (incomingNama.isNotEmpty && !incomingNama.startsWith('Pelanggan ')) {
-        // Incoming membawa Nama Asli resmi (misal: "HENI ZAINI" / "ROSANIH")
-        currentNama = incomingNama.trim();
-      } else if (currentNama.isEmpty || currentNama.startsWith('Pelanggan ')) {
-        if (incomingNama.isNotEmpty) {
-          currentNama = incomingNama.trim();
-        } else if (currentNama.isEmpty) {
-          currentNama = 'Pelanggan $nik';
-        }
+        finalNama = incomingNama.trim();
       }
 
-      // 3. Evaluasi Family ID
+      // 2. Evaluasi Family ID
       final incomingFamId = data['familyId']?.toString() ?? '';
       if (incomingFamId.isNotEmpty) {
-        currentFamilyId = incomingFamId.trim();
+        finalFamilyId = incomingFamId.trim();
       }
 
-      // 4. Evaluasi Sisa Kuota (JANGAN TIMPA KUOTA > 0 DENGAN FALLBACK 0)
+      // 3. Evaluasi Sisa Kuota
       if (data.containsKey('remainingQuota') && data['remainingQuota'] != null) {
         final incomingQuota = (data['remainingQuota'] as num).toInt();
-        if (incomingQuota > 0 || currentQuota == 0) {
-          currentQuota = incomingQuota;
+        if (incomingQuota > 0) {
+          finalQuota = incomingQuota;
         }
       }
 
       if (data['category'] != null && data['category'].toString().isNotEmpty) {
-        currentCategory = data['category'].toString();
+        finalCategory = data['category'].toString();
       }
 
       final customerMap = {
         'nik': nik,
-        'nama': currentNama,
-        'familyId': currentFamilyId,
-        'category': currentCategory,
-        'remainingQuota': currentQuota,
+        'nama': finalNama,
+        'familyId': finalFamilyId,
+        'category': finalCategory,
+        'remainingQuota': finalQuota,
         'isEnriched': 1,
         'updatedAt': DateTime.now().toIso8601String(),
       };
@@ -110,7 +103,7 @@ class CustomerProvider extends ChangeNotifier {
       );
 
       notifyListeners();
-      debugPrint('✅ [SQLITE SMART SAVE SUCCESS] NIK $nik | Nama: $currentNama | FamID: $currentFamilyId | Kuota: $currentQuota');
+      debugPrint('✅ [SQLITE SMART SAVE SUCCESS] NIK $nik | Nama: $finalNama | FamID: $finalFamilyId | Kuota: $finalQuota');
     } catch (e, stack) {
       debugPrint('❌ [SQLITE PROVIDER ERROR]: $e\n$stack');
     }
