@@ -625,14 +625,17 @@ class _WebViewScreenState extends State<WebViewScreen>
   var customerCache = {};
 
   function dispatchToFlutter(tag, payload) {
-    console.log("[JS STEP 4] (" + tag + ") Sending Merged Payload:", JSON.stringify(payload));
-    try {
+    console.log("[JS STEP 4] (" + tag + ") Sending Payload to Flutter:", JSON.stringify(payload));
+    function attemptCall(count) {
       if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === "function") {
         window.flutter_inappwebview.callHandler("onMyPertaminaCustomerCaptured", payload)
-          .then(function() { console.log("[JS STEP 5 SUCCESS] Flutter Handler Merespon!"); })
+          .then(function() { console.log("[JS STEP 5 SUCCESS] Merespon dari Flutter Handler!"); })
           .catch(function(err) { console.log("[JS STEP 5 ERR]:", String(err)); });
+      } else if (count < 10) {
+        setTimeout(function() { attemptCall(count + 1); }, 300);
       }
-    } catch(e) { console.log("[JS DISPATCH ERR]:", String(e)); }
+    }
+    attemptCall(1);
   }
 
   var origFetch = window.fetch;
