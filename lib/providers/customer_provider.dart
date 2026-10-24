@@ -36,7 +36,8 @@ class CustomerProvider extends ChangeNotifier {
     Map<String, dynamic> data,
   ) async {
     debugPrint('⚙️ [PROVIDER STEP 1] Menerima data di CustomerProvider: $data');
-    final nik = '${data['nik'] ?? ''}'.trim();
+    try {
+      final nik = '${data['nik'] ?? ''}'.trim();
     if (!RegExp(r'^\d{16}$').hasMatch(nik)) {
       debugPrint('⚠️ [V5 CUSTOMER] NIK tidak valid: $nik');
       return;
@@ -80,7 +81,11 @@ class CustomerProvider extends ChangeNotifier {
       debugPrint('✅ [V5 CUSTOMER] Pelanggan tersimpan dan daftar SQLite dimuat ulang: $nik');
       notifyListeners();
     } catch (e, stackTrace) {
-      debugPrint('❌ [V5 CUSTOMER SAVE ERROR]: $e\n$stackTrace');
+      debugPrint('❌ [SQLITE PROVIDER ERROR] Tahap simpan customer gagal: $e\n$stackTrace');
+      rethrow;
+    }
+    } catch (e, stackTrace) {
+      debugPrint('❌ [PROVIDER INPUT ERROR] Gagal memproses payload: $e\n$stackTrace');
       rethrow;
     }
   }

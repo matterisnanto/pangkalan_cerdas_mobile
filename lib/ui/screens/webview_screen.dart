@@ -292,6 +292,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                         _firebaseMessagingSuppressorScript +
                         _tokenInterceptorScript +
                         _safeCustomerCaptureScript +
+                        _diagnosticCustomerCaptureScript +
                         _dataCaptureScript +
                         _transactionBridgeScript,
                     injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
@@ -369,7 +370,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                   controller.addJavaScriptHandler(
                     handlerName: 'onMyPertaminaCustomerCaptured',
                     callback: (args) async {
-                      debugPrint('📥 [FLUTTER STEP 5 RECEIVED] Raw args: $args');
+                      debugPrint('📥 [FLUTTER HANDLER STEP 5 DITERIMA] Raw args: $args');
                       if (args.isEmpty || args.first == null) {
                         debugPrint('⚠️ [FLUTTER WARNING] Payload kosong!');
                         return;
@@ -636,6 +637,58 @@ class _WebViewScreenState extends State<WebViewScreen>
         dispatchToFlutter("STEP 3 FALLBACK", { nik: nik, nama: 'Pelanggan ' + nik, category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 1 });
       });
     } catch (error) { console.log("❌ [JS GLOBAL FETCH ERROR]:", String(error)); }
+    return response;
+  };
+})();
+''';
+
+  static const String _diagnosticCustomerCaptureScript = r'''
+(function() {
+  if (window.__pcDiagnosticCustomerCapture) return;
+  window.__pcDiagnosticCustomerCapture = true;
+  console.log('[INTERCEPTOR INIT] Interceptor Diagnostik Aktif!');
+  function safeDispatch(tag, payload) {
+    try {
+      console.log('[JS STEP 4] (' + tag + ') Memeriksa Flutter bridge');
+      if (!window.flutter_inappwebview) { console.log('[JS ERROR STEP 4] Bridge tidak tersedia'); return; }
+      if (typeof window.flutter_inappwebview.callHandler !== 'function') { console.log('[JS ERROR STEP 4] callHandler bukan fungsi'); return; }
+      console.log('[JS STEP 4] Payload:', JSON.stringify(payload));
+      window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload)
+        .then(function() { console.log('[JS STEP 5 SUCCESS] Flutter Handler merespon'); })
+        .catch(function(error) { console.log('[JS STEP 5 ERROR]', String(error)); });
+    } catch (error) { console.log('[JS DISPATCH EXCEPTION]', String(error)); }
+  }
+  var originalFetch = window.fetch;
+  window.fetch = async function() {
+    var response = await originalFetch.apply(this, arguments);
+    try {
+      var input = arguments[0], url = input && input.url || input || '';
+      url = String(url);
+      if (url.indexOf('/customers/') < 0 && url.indexOf('/verify-nik') < 0 && url.indexOf('/quota') < 0 && url.indexOf('nationalityId=') < 0) return response;
+      console.log('[JS STEP 1] URL Terdeteksi:', url);
+      var match = url.match(/\b\d{16}\b/), nik = match ? String(match[0]).trim() : '';
+      if (nik.length !== 16) { console.log('[JS STEP 3 CANCELLED] NIK tidak valid:', nik); return response; }
+      console.log('[JS STEP 3] Extracted NIK:', nik);
+      try {
+        response.clone().json().then(function(data) {
+          try {
+            console.log('[JS STEP 2] Response JSON Diterima:', JSON.stringify(data));
+            var body = data && data.data || data || {}, quota = body.quotaRemaining || {};
+            var value = quota.monthly !== undefined ? quota.monthly : (quota.family !== undefined ? quota.family : (body.remainingQuota || 0));
+            safeDispatch('PARSED_SUCCESS', {nik: nik, nama: body.name || body.nama || ('Pelanggan ' + nik), category: 'Rumah Tangga', remainingQuota: Number(value) || 0, isEnriched: 1});
+          } catch (error) {
+            console.log('[JS STEP 3 WARNING]', String(error));
+            safeDispatch('DETAIL_FALLBACK', {nik: nik, nama: 'Pelanggan ' + nik, category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 1});
+          }
+        }).catch(function(error) {
+          console.log('[JS STEP 2 ERROR]', String(error));
+          safeDispatch('JSON_FALLBACK', {nik: nik, nama: 'Pelanggan ' + nik, category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 1});
+        });
+      } catch (error) {
+        console.log('[CRITICAL JS ERROR POST STEP 3]', String(error));
+        safeDispatch('EMERGENCY_FALLBACK', {nik: nik, nama: 'Pelanggan ' + nik, category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 1});
+      }
+    } catch (error) { console.log('[JS GLOBAL FETCH ERROR]', String(error)); }
     return response;
   };
 })();
