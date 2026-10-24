@@ -38,9 +38,11 @@ class CustomerProvider extends ChangeNotifier {
       final nik = data['nik']?.toString().trim() ?? '';
       if (nik.length != 16) return;
 
+      final isNativeFallback = data['isNativeFallback'] == true;
+
       final db = await LocalDatabaseService.instance.database;
 
-      // 1. Ambil data eksisting dari SQLite jika NIK sudah ada
+      // 1. Cek data lama di SQLite
       final existingRows = await db.query(
         'customers',
         where: 'nik = ?',
@@ -61,13 +63,11 @@ class CustomerProvider extends ChangeNotifier {
         finalCategory = old['category']?.toString() ?? 'Rumah Tangga';
       }
 
-      // 2. Evaluasi Nama Baru
+      // 2. Evaluasi Nama Baru (JANGAN TIMPA NAMA ASLI DENGAN NATIVE FALLBACK / DEFAULT)
       final incomingNama = data['nama']?.toString() ?? data['name']?.toString() ?? '';
       if (incomingNama.isNotEmpty && !incomingNama.startsWith('Pelanggan ')) {
-        // payload membawa Nama Asli (contoh: "HENI ZAINI")
         finalNama = incomingNama.trim();
       } else if (finalNama.isEmpty) {
-        // Hanya berikan nama default jika SQLite belum punya nama sama sekali
         finalNama = 'Pelanggan $nik';
       }
 
@@ -77,11 +77,14 @@ class CustomerProvider extends ChangeNotifier {
         finalFamilyId = incomingFamId.trim();
       }
 
-      // 4. Evaluasi Kuota Baru
+      // 4. Evaluasi Kuota Baru (JANGAN TIMPA KUOTA > 0 DENGAN FALLBACK 0)
       if (data.containsKey('remainingQuota') && data['remainingQuota'] != null) {
         final incomingQuota = (data['remainingQuota'] as num).toInt();
         if (incomingQuota > 0) {
           finalQuota = incomingQuota;
+        } else if (incomingQuota == 0 && isNativeFallback && finalQuota > 0) {
+          // Native fallback bawa quota 0 -> jaga kuota lama
+          debugPrint('🛡️ [SMART PROTECT] Native fallback quota=0 diabaikan, jaga kuota lama: $finalQuota');
         }
       }
 
