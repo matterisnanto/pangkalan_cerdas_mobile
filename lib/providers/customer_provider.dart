@@ -38,11 +38,9 @@ class CustomerProvider extends ChangeNotifier {
       final nik = data['nik']?.toString().trim() ?? '';
       if (nik.length != 16) return;
 
-      final isNativeFallback = data['isNativeFallback'] == true;
-
       final db = await LocalDatabaseService.instance.database;
 
-      // 1. Cek data lama di SQLite
+      // 1. Ambil data eksisting dari SQLite
       final existingRows = await db.query(
         'customers',
         where: 'nik = ?',
@@ -50,54 +48,56 @@ class CustomerProvider extends ChangeNotifier {
         limit: 1,
       );
 
-      String finalNama = '';
-      String finalFamilyId = '';
-      int finalQuota = 0;
-      String finalCategory = 'Rumah Tangga';
+      String currentNama = '';
+      String currentFamilyId = '';
+      int currentQuota = 0;
+      String currentCategory = 'Rumah Tangga';
 
       if (existingRows.isNotEmpty) {
         final old = existingRows.first;
-        finalNama = old['nama']?.toString() ?? '';
-        finalFamilyId = old['familyId']?.toString() ?? '';
-        finalQuota = (old['remainingQuota'] as num?)?.toInt() ?? 0;
-        finalCategory = old['category']?.toString() ?? 'Rumah Tangga';
+        currentNama = old['nama']?.toString() ?? '';
+        currentFamilyId = old['familyId']?.toString() ?? '';
+        currentQuota = (old['remainingQuota'] as num?)?.toInt() ?? 0;
+        currentCategory = old['category']?.toString() ?? 'Rumah Tangga';
       }
 
-      // 2. Evaluasi Nama Baru (JANGAN TIMPA NAMA ASLI DENGAN NATIVE FALLBACK / DEFAULT)
+      // 2. Evaluasi Nama Asli
       final incomingNama = data['nama']?.toString() ?? data['name']?.toString() ?? '';
       if (incomingNama.isNotEmpty && !incomingNama.startsWith('Pelanggan ')) {
-        finalNama = incomingNama.trim();
-      } else if (finalNama.isEmpty) {
-        finalNama = 'Pelanggan $nik';
+        // Payload membawa Nama Asli resmi (misal: "HENI ZAINI")
+        currentNama = incomingNama.trim();
+      } else if (currentNama.isEmpty || currentNama.startsWith('Pelanggan ')) {
+        if (incomingNama.isNotEmpty) {
+          currentNama = incomingNama.trim();
+        } else if (currentNama.isEmpty) {
+          currentNama = 'Pelanggan $nik';
+        }
       }
 
-      // 3. Evaluasi Family ID Baru
+      // 3. Evaluasi Family ID
       final incomingFamId = data['familyId']?.toString() ?? '';
       if (incomingFamId.isNotEmpty) {
-        finalFamilyId = incomingFamId.trim();
+        currentFamilyId = incomingFamId.trim();
       }
 
-      // 4. Evaluasi Kuota Baru (JANGAN TIMPA KUOTA > 0 DENGAN FALLBACK 0)
+      // 4. Evaluasi Sisa Kuota (JANGAN TIMPA KUOTA > 0 DENGAN FALLBACK 0)
       if (data.containsKey('remainingQuota') && data['remainingQuota'] != null) {
         final incomingQuota = (data['remainingQuota'] as num).toInt();
-        if (incomingQuota > 0) {
-          finalQuota = incomingQuota;
-        } else if (incomingQuota == 0 && isNativeFallback && finalQuota > 0) {
-          // Native fallback bawa quota 0 -> jaga kuota lama
-          debugPrint('🛡️ [SMART PROTECT] Native fallback quota=0 diabaikan, jaga kuota lama: $finalQuota');
+        if (incomingQuota > 0 || currentQuota == 0) {
+          currentQuota = incomingQuota;
         }
       }
 
       if (data['category'] != null && data['category'].toString().isNotEmpty) {
-        finalCategory = data['category'].toString();
+        currentCategory = data['category'].toString();
       }
 
       final customerMap = {
         'nik': nik,
-        'nama': finalNama,
-        'familyId': finalFamilyId,
-        'category': finalCategory,
-        'remainingQuota': finalQuota,
+        'nama': currentNama,
+        'familyId': currentFamilyId,
+        'category': currentCategory,
+        'remainingQuota': currentQuota,
         'isEnriched': 1,
         'updatedAt': DateTime.now().toIso8601String(),
       };
@@ -110,7 +110,7 @@ class CustomerProvider extends ChangeNotifier {
       );
 
       notifyListeners();
-      debugPrint('✅ [SQLITE SMART SAVE SUCCESS] NIK $nik | Nama: $finalNama | FamID: $finalFamilyId | Kuota: $finalQuota');
+      debugPrint('✅ [SQLITE SMART SAVE SUCCESS] NIK $nik | Nama: $currentNama | FamID: $currentFamilyId | Kuota: $currentQuota');
     } catch (e, stack) {
       debugPrint('❌ [SQLITE PROVIDER ERROR]: $e\n$stack');
     }
