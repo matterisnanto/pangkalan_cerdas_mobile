@@ -431,6 +431,9 @@ class _WebViewScreenState extends State<WebViewScreen>
                 },
                 onLoadStop: (controller, url) async {
                   await controller.evaluateJavascript(
+                    source: _retryBridgeOnLoadStopScript,
+                  );
+                  await controller.evaluateJavascript(
                     source: _transactionBridgeScript,
                   );
                   await controller.evaluateJavascript(
@@ -464,8 +467,24 @@ class _WebViewScreenState extends State<WebViewScreen>
                   _extractToken(request.headers);
                   return null;
                 },
-                onLoadResource: (controller, resource) {
-                  // Fallback token capture from load resource
+                onLoadResource: (controller, resource) async {
+                  final resourceUrl = resource.url?.toString() ?? '';
+                  if (resourceUrl.contains('/customers/') ||
+                      resourceUrl.contains('/verify-nik') ||
+                      resourceUrl.contains('/quota')) {
+                    final match = RegExp(r'\b\d{16}\b').firstMatch(resourceUrl);
+                    if (match != null) {
+                      final nik = match.group(0)!;
+                      debugPrint('📡 [NATIVE CAPTURE] NIK $nik terdeteksi via onLoadResource!');
+                      await context.read<CustomerProvider>().autoSaveCustomerFromPortalQuota({
+                        'nik': nik,
+                        'nama': 'Pelanggan $nik',
+                        'category': 'Rumah Tangga',
+                        'remainingQuota': 0,
+                        'isEnriched': 1,
+                      });
+                    }
+                  }
                 },
                 onReceivedServerTrustAuthRequest:
                     (controller, challenge) async {
@@ -658,15 +677,18 @@ class _WebViewScreenState extends State<WebViewScreen>
       console.log('[UNHANDLED PROMISE REJECTION]: ' + text);
     }
   });
-  function safeDispatch(tag, payload) {
+  function safeDispatch(tag, payload, attempt) {
+    attempt = attempt || 1;
     try {
-      console.log('[JS STEP 4] (' + tag + ') Memeriksa Flutter bridge');
-      if (!window.flutter_inappwebview) { console.log('[JS ERROR STEP 4] Bridge tidak tersedia'); return; }
-      if (typeof window.flutter_inappwebview.callHandler !== 'function') { console.log('[JS ERROR STEP 4] callHandler bukan fungsi'); return; }
-      console.log('[JS STEP 4] Payload:', JSON.stringify(payload));
-      window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload)
-        .then(function() { console.log('[JS STEP 5 SUCCESS] Flutter Handler merespon'); })
-        .catch(function(error) { console.log('[JS STEP 5 ERROR]', String(error)); });
+      console.log('[JS STEP 4] (' + tag + ') Percobaan ' + attempt);
+      if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
+        window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload)
+          .then(function() { console.log('[JS STEP 5 SUCCESS] Flutter Handler merespon'); })
+          .catch(function(error) { console.log('[JS STEP 5 ERROR]', String(error)); });
+      } else if (attempt < 10) {
+        console.log('[JS STEP 4 WAITING] Bridge belum siap');
+        setTimeout(function() { safeDispatch(tag, payload, attempt + 1); }, 300);
+      } else console.log('[JS STEP 4 FAIL] Bridge tidak tersedia setelah 10 percobaan');
     } catch (error) { console.log('[JS DISPATCH EXCEPTION]', String(error)); }
   }
   var originalFetch = window.fetch;
@@ -703,6 +725,26 @@ class _WebViewScreenState extends State<WebViewScreen>
       }
     } catch (error) { console.log('[JS GLOBAL FETCH ERROR]', String(error)); }
     return response;
+  };
+})();
+''';
+
+  static const String _retryBridgeOnLoadStopScript = r'''
+(function() {
+  if (window.__pcRetryBridgeV2) return;
+  window.__pcRetryBridgeV2 = true;
+  console.log('[INTERCEPTOR INIT] Interceptor v2.0 dengan Retry Bridge Aktif!');
+  window.__pcDispatchWithRetry = function(payload, attempt) {
+    attempt = attempt || 1;
+    if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
+      console.log('[JS STEP 4] Memanggil callHandler Percobaan ' + attempt, JSON.stringify(payload));
+      window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload)
+        .then(function() { console.log('[JS STEP 5 SUCCESS] Flutter Handler Berhasil Merespon'); })
+        .catch(function(error) { console.log('[JS STEP 5 ERROR]', String(error)); });
+    } else if (attempt < 10) {
+      console.log('[JS STEP 4 WAITING] Bridge belum siap (' + attempt + '/10)');
+      setTimeout(function() { window.__pcDispatchWithRetry(payload, attempt + 1); }, 300);
+    } else console.log('[JS STEP 4 FAIL] Bridge tidak tersedia setelah 10 percobaan');
   };
 })();
 ''';
