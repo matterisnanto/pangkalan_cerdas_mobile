@@ -475,12 +475,10 @@ class _WebViewScreenState extends State<WebViewScreen>
                     final match = RegExp(r'\b\d{16}\b').firstMatch(resourceUrl);
                     if (match != null) {
                       final nik = match.group(0)!;
-                      debugPrint('📡 [NATIVE CAPTURE] NIK $nik terdeteksi via onLoadResource!');
+                      debugPrint('📡 [NATIVE CAPTURE] Fallback NIK $nik terdeteksi via onLoadResource');
                       await context.read<CustomerProvider>().autoSaveCustomerFromPortalQuota({
                         'nik': nik,
-                        'nama': 'Pelanggan $nik',
                         'category': 'Rumah Tangga',
-                        'remainingQuota': 0,
                         'isEnriched': 1,
                       });
                     }
@@ -618,49 +616,50 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   static const String _safeCustomerCaptureScript = r'''
 (function() {
-  if (window.__pcSafeCustomerCapture) return;
-  window.__pcSafeCustomerCapture = true;
-  console.log("🔔 [INTERCEPTOR INIT] Interceptor Siap Tangkap Step 1-5!");
-  function dispatchToFlutter(stepTag, payload) {
+  if (window.__pcSmartMergeV3) return;
+  window.__pcSmartMergeV3 = true;
+  console.log("🔔 [INTERCEPTOR INIT] Smart Merge Interceptor v3.0 Active!");
+  var customerCache = {};
+  function dispatchToFlutter(sourceTag, payload) {
     try {
-      console.log("🚀 [" + stepTag + " -> JS STEP 4] Mengirim Payload ke Flutter:", JSON.stringify(payload));
+      console.log("🚀 [JS STEP 4] (" + sourceTag + ") Sending Merged Payload:", JSON.stringify(payload));
       if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
-        window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload).then(function() {
-          console.log("✅ [JS STEP 5] Flutter Handler Berhasil Merespon & Menyimpan!");
-        }).catch(function(err) { console.log("❌ [JS STEP 5 ERROR] Flutter CallHandler Gagal:", String(err)); });
-      } else console.log("❌ [JS STEP 4 ERROR] Flutter bridge tidak tersedia!");
+        window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload).catch(function(err) { console.log("❌ [JS STEP 5 ERR]:", String(err)); });
+      }
     } catch (error) { console.log("❌ [JS DISPATCH EXCEPTION]:", String(error)); }
   }
-  function target(url) {
-    url = String(url || '');
-    return url.indexOf('/customers/') >= 0 || url.indexOf('/verify-nik') >= 0 || url.indexOf('/quota') >= 0 || url.indexOf('nationalityId=') >= 0;
-  }
-  var originalFetch = window.fetch;
+  var origFetch = window.fetch;
   window.fetch = async function() {
-    var response = await originalFetch.apply(this, arguments);
+    var response = await origFetch.apply(this, arguments);
     try {
-      var args = arguments, url = args[0] && args[0].url || args[0] || '';
-      if (!target(url)) return response;
-      console.log("🔍 [JS STEP 1] Target API Terdeteksi:", String(url));
-      var match = String(url).match(/\b\d{16}\b/), nik = match ? String(match[0]).trim() : '';
-      if (!nik) { console.log("⚠️ [JS STEP 3 CANCELLED] NIK Tidak Ditemukan:", String(url)); return response; }
-      console.log("🎯 [JS STEP 3 SUCCESS] NIK 16 Digit Berhasil Diekstrak:", nik);
+      var input = arguments[0], urlStr = String(input && input.url || input || '');
+      var isVerify = urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1;
+      var isQuota = urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1;
+      if (!isVerify && !isQuota) return response;
+      var match = urlStr.match(/\b\d{16}\b/), nik = match ? String(match[0]) : '';
+      if (nik.length !== 16) return response;
       response.clone().json().then(function(data) {
-        console.log("🔍 [JS STEP 2] Response JSON Diterima:", JSON.stringify(data));
-        var body = data && data.data || data || {}, quota = body.quotaRemaining || {};
-        var nama = body.name || body.nama || ('Pelanggan ' + nik);
-        var remaining = quota.monthly !== undefined ? quota.monthly : (quota.family !== undefined ? quota.family : (body.remainingQuota || 0));
-        dispatchToFlutter("STEP 3 PARSED", { nik: nik, nama: nama, category: 'Rumah Tangga', remainingQuota: Number(remaining) || 0, isEnriched: 1 });
-      }).catch(function(error) {
-        console.log("⚠️ [JS STEP 2 WARNING] Response Bukan JSON, Fallback NIK:", String(error));
-        dispatchToFlutter("STEP 3 FALLBACK", { nik: nik, nama: 'Pelanggan ' + nik, category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 1 });
-      });
+        var body = data && data.data || data || {};
+        var existing = customerCache[nik] || {nik: nik, nama: 'Pelanggan ' + nik, familyId: '', category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 1};
+        if (isVerify) {
+          var realName = String(body.name || body.nama || '').trim();
+          var familyId = String(body.familyIdEncrypted || body.familyId || '').trim();
+          if (realName) existing.nama = realName;
+          if (familyId) existing.familyId = familyId;
+          dispatchToFlutter('VERIFY_NIK_MERGE', existing);
+        } else {
+          var quota = body.quotaRemaining || {};
+          var parsedQuota = Number(quota.monthly !== undefined ? quota.monthly : quota.family);
+          existing.remainingQuota = Number.isFinite(parsedQuota) ? parsedQuota : 0;
+          dispatchToFlutter('QUOTA_MERGE', existing);
+        }
+        customerCache[nik] = existing;
+      }).catch(function(error) { console.log('[JS JSON ERROR]', String(error)); });
     } catch (error) { console.log("❌ [JS GLOBAL FETCH ERROR]:", String(error)); }
     return response;
   };
 })();
 ''';
-
   static const String _diagnosticCustomerCaptureScript = r'''
 (function() {
   if (window.__pcDiagnosticCustomerCapture) return;
@@ -698,31 +697,7 @@ class _WebViewScreenState extends State<WebViewScreen>
       var input = arguments[0], url = input && input.url || input || '';
       url = String(url);
       if (url.indexOf('/customers/') < 0 && url.indexOf('/verify-nik') < 0 && url.indexOf('/quota') < 0 && url.indexOf('nationalityId=') < 0) return response;
-      console.log('[JS STEP 1] URL Terdeteksi:', url);
-      var match = url.match(/\b\d{16}\b/), nik = match ? String(match[0]).trim() : '';
-      if (nik.length !== 16) { console.log('[JS STEP 3 CANCELLED] NIK tidak valid:', nik); return response; }
-      console.log('[JS STEP 3] Extracted NIK:', nik);
-      var immediatePayload = {nik: nik, nama: 'Pelanggan ' + nik, category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 0};
-      safeDispatch('DIRECT_STEP3', immediatePayload);
-      try {
-        response.clone().json().then(function(data) {
-          try {
-            console.log('[JS STEP 2] Response JSON Diterima:', JSON.stringify(data));
-            var body = data && data.data || data || {}, quota = body.quotaRemaining || {};
-            var value = quota.monthly !== undefined ? quota.monthly : (quota.family !== undefined ? quota.family : (body.remainingQuota || 0));
-            safeDispatch('PARSED_SUCCESS', {nik: nik, nama: body.name || body.nama || ('Pelanggan ' + nik), category: 'Rumah Tangga', remainingQuota: Number(value) || 0, isEnriched: 1});
-          } catch (error) {
-            console.log('[JS STEP 3 WARNING]', String(error));
-            safeDispatch('DETAIL_FALLBACK', {nik: nik, nama: 'Pelanggan ' + nik, category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 1});
-          }
-        }).catch(function(error) {
-          console.log('[JS STEP 2 ERROR]', String(error));
-          safeDispatch('JSON_FALLBACK', {nik: nik, nama: 'Pelanggan ' + nik, category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 1});
-        });
-      } catch (error) {
-        console.log('[CRITICAL JS ERROR POST STEP 3]', String(error));
-        safeDispatch('EMERGENCY_FALLBACK', {nik: nik, nama: 'Pelanggan ' + nik, category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 1});
-      }
+      return response;
     } catch (error) { console.log('[JS GLOBAL FETCH ERROR]', String(error)); }
     return response;
   };

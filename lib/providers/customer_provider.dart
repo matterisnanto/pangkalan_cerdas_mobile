@@ -42,18 +42,33 @@ class CustomerProvider extends ChangeNotifier {
       debugPrint('⚠️ [V5 CUSTOMER] NIK tidak valid: $nik');
       return;
     }
-    final nama = data['nama']?.toString().trim() ?? '';
-    final name = nama.isNotEmpty ? nama : (data['name']?.toString().trim() ?? '');
-    final familyId = '${data['familyId'] ?? ''}'.trim();
+    final incomingName = data['nama']?.toString().trim() ?? '';
+    final resolvedIncomingName = incomingName.isNotEmpty
+        ? incomingName
+        : (data['name']?.toString().trim() ?? '');
+    final incomingFamilyId = '${data['familyId'] ?? ''}'.trim();
     final category = Pelanggan.normalizeKategori('${data['category'] ?? ''}');
-    final remainingQuota = data['remainingQuota'] is num
-        ? (data['remainingQuota'] as num).toInt()
-        : int.tryParse('${data['remainingQuota'] ?? 0}') ?? 0;
-    debugPrint(
-      '👤 [V5 CUSTOMER] Upsert NIK: $nik | Nama: $name | Family ID: $familyId | Kuota: $remainingQuota',
-    );
+    final hasIncomingQuota = data.containsKey('remainingQuota') && data['remainingQuota'] != null;
+    final incomingQuota = hasIncomingQuota
+        ? (data['remainingQuota'] is num
+            ? (data['remainingQuota'] as num).toInt()
+            : int.tryParse('${data['remainingQuota']}') ?? 0)
+        : null;
     try {
       final existing = await _pelangganService.getPelangganByNik(nik);
+      final existingName = existing?.nama ?? '';
+      final existingFamilyId = (existing?.familyIdEncrypted ?? existing?.encryptedFamilyId ?? '').trim();
+      final existingQuota = existing?.sisaKuotaBulanan ?? 0;
+      final incomingIsPlaceholder = resolvedIncomingName.isEmpty || resolvedIncomingName.startsWith('Pelanggan ');
+      final existingIsReal = existingName.isNotEmpty && !existingName.startsWith('Pelanggan ');
+      final name = incomingIsPlaceholder && existingIsReal ? existingName : (resolvedIncomingName.isEmpty ? (existingName.isEmpty ? 'Pelanggan $nik' : existingName) : resolvedIncomingName);
+      final familyId = incomingFamilyId.isEmpty ? existingFamilyId : incomingFamilyId;
+      final remainingQuota = incomingQuota == null || (incomingQuota == 0 && existingQuota > 0)
+          ? existingQuota
+          : incomingQuota;
+      debugPrint(
+        '👤 [V5 CUSTOMER] Upsert NIK: $nik | Nama: $name | Family ID: $familyId | Kuota: $remainingQuota',
+      );
       final customer =
           (existing ?? Pelanggan(nik: nik, nama: name, kategori: category))
               .copyWith(
