@@ -32,76 +32,84 @@ class CustomerProvider extends ChangeNotifier {
     });
   }
 
-  Future<void> autoSaveCustomerFromPortalQuota(
-    Map<String, dynamic> data,
-  ) async {
-    debugPrint('⚙️ [PROVIDER STEP 1] Menerima data di CustomerProvider: $data');
+  Future<void> autoSaveCustomerFromPortalQuota(Map<String, dynamic> data) async {
     try {
-      final nik = '${data['nik'] ?? ''}'.trim();
-    if (!RegExp(r'^\d{16}$').hasMatch(nik)) {
-      debugPrint('⚠️ [V5 CUSTOMER] NIK tidak valid: $nik');
-      return;
-    }
-    final incomingName = data['nama']?.toString().trim() ?? '';
-    final resolvedIncomingName = incomingName.isNotEmpty
-        ? incomingName
-        : (data['name']?.toString().trim() ?? '');
-    final incomingFamilyId = '${data['familyId'] ?? ''}'.trim();
-    final category = Pelanggan.normalizeKategori('${data['category'] ?? ''}');
-    final hasIncomingQuota = data.containsKey('remainingQuota') && data['remainingQuota'] != null;
-    final incomingQuota = hasIncomingQuota
-        ? (data['remainingQuota'] is num
-            ? (data['remainingQuota'] as num).toInt()
-            : int.tryParse('${data['remainingQuota']}') ?? 0)
-        : null;
-    try {
-      final existing = await _pelangganService.getPelangganByNik(nik);
-      final existingName = existing?.nama ?? '';
-      final existingFamilyId = (existing?.familyIdEncrypted ?? existing?.encryptedFamilyId ?? '').trim();
-      final existingQuota = existing?.sisaKuotaBulanan ?? 0;
-      final incomingIsPlaceholder = resolvedIncomingName.isEmpty || resolvedIncomingName.startsWith('Pelanggan ');
-      final existingIsReal = existingName.isNotEmpty && !existingName.startsWith('Pelanggan ');
-      final name = incomingIsPlaceholder && existingIsReal ? existingName : (resolvedIncomingName.isEmpty ? (existingName.isEmpty ? 'Pelanggan $nik' : existingName) : resolvedIncomingName);
-      final familyId = incomingFamilyId.isEmpty ? existingFamilyId : incomingFamilyId;
-      final remainingQuota = incomingQuota == null || (incomingQuota == 0 && existingQuota > 0)
-          ? existingQuota
-          : incomingQuota;
-      debugPrint(
-        '👤 [V5 CUSTOMER] Upsert NIK: $nik | Nama: $name | Family ID: $familyId | Kuota: $remainingQuota',
+      final nik = data['nik']?.toString().trim() ?? '';
+      if (nik.length != 16) return;
+
+      final db = await database;
+
+      // 1. Ambil data eksisting dari SQLite jika NIK sudah ada
+      final existingRows = await db.query(
+        'customers',
+        where: 'nik = ?',
+        whereArgs: [nik],
+        limit: 1,
       );
-      final customer =
-          (existing ?? Pelanggan(nik: nik, nama: name, kategori: category))
-              .copyWith(
-                nama: name.isEmpty ? existing?.nama : name,
-                kategori: category,
-                familyIdEncrypted: familyId.isEmpty ? null : familyId,
-                encryptedFamilyId: familyId.isEmpty ? null : familyId,
-                sisaKuota: remainingQuota,
-                sisaKuotaBulanan: remainingQuota,
-              );
-      final customerData = {
-        'nik': customer.nik,
-        'nama': customer.nama,
-        'category': customer.kategori,
-        'familyId': customer.familyIdEncrypted ?? customer.encryptedFamilyId,
-        'remainingQuota': customer.sisaKuotaBulanan ?? 0,
+
+      String finalNama = '';
+      String finalFamilyId = '';
+      int finalQuota = 0;
+      String finalCategory = 'Rumah Tangga';
+
+      if (existingRows.isNotEmpty) {
+        final old = existingRows.first;
+        finalNama = old['nama']?.toString() ?? '';
+        finalFamilyId = old['familyId']?.toString() ?? '';
+        finalQuota = (old['remainingQuota'] as num?)?.toInt() ?? 0;
+        finalCategory = old['category']?.toString() ?? 'Rumah Tangga';
+      }
+
+      // 2. Evaluasi Nama Baru
+      final incomingNama = data['nama']?.toString() ?? data['name']?.toString() ?? '';
+      if (incomingNama.isNotEmpty && !incomingNama.startsWith('Pelanggan ')) {
+        // payload membawa Nama Asli (contoh: "HENI ZAINI")
+        finalNama = incomingNama.trim();
+      } else if (finalNama.isEmpty) {
+        // Hanya berikan nama default jika SQLite belum punya nama sama sekali
+        finalNama = 'Pelanggan $nik';
+      }
+
+      // 3. Evaluasi Family ID Baru
+      final incomingFamId = data['familyId']?.toString() ?? '';
+      if (incomingFamId.isNotEmpty) {
+        finalFamilyId = incomingFamId.trim();
+      }
+
+      // 4. Evaluasi Kuota Baru
+      if (data.containsKey('remainingQuota') && data['remainingQuota'] != null) {
+        final incomingQuota = (data['remainingQuota'] as num).toInt();
+        if (incomingQuota > 0) {
+          finalQuota = incomingQuota;
+        }
+      }
+
+      if (data['category'] != null && data['category'].toString().isNotEmpty) {
+        finalCategory = data['category'].toString();
+      }
+
+      final customerMap = {
+        'nik': nik,
+        'nama': finalNama,
+        'familyId': finalFamilyId,
+        'category': finalCategory,
+        'remainingQuota': finalQuota,
         'isEnriched': 1,
         'updatedAt': DateTime.now().toIso8601String(),
       };
-      debugPrint('💾 [SQLITE SMART UPSERT]: $customerData');
-      await LocalDatabaseService.instance.upsertCustomer(customerData);
-      debugPrint('✅ [PROVIDER STEP 3] Upsert SQLite sukses: $nik');
-      await _pelangganService.addPelanggan(customer);
-      await _pelangganService.getAllPelanggan();
-      debugPrint('✅ [SQLITE SMART SAVE SUCCESS] NIK $nik | Nama: $name | FamID: $familyId | Kuota: $remainingQuota');
+
+      debugPrint('💾 [SQLITE SMART UPSERT]: $customerMap');
+      await db.insert(
+        'customers',
+        customerMap,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      await loadCustomers();
       notifyListeners();
-    } catch (e, stackTrace) {
-      debugPrint('❌ [SQLITE PROVIDER ERROR] Tahap simpan customer gagal: $e\n$stackTrace');
-      rethrow;
-    }
-    } catch (e, stackTrace) {
-      debugPrint('❌ [PROVIDER INPUT ERROR] Gagal memproses payload: $e\n$stackTrace');
-      rethrow;
+      debugPrint('✅ [SQLITE SMART SAVE SUCCESS] NIK $nik | Nama: $finalNama | FamID: $finalFamilyId | Kuota: $finalQuota');
+    } catch (e, stack) {
+      debugPrint('❌ [SQLITE PROVIDER ERROR]: $e\n$stack');
     }
   }
 
