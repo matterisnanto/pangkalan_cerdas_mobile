@@ -475,9 +475,14 @@ class _WebViewScreenState extends State<WebViewScreen>
                     final match = RegExp(r'\b\d{16}\b').firstMatch(resourceUrl);
                     if (match != null) {
                       final nik = match.group(0)!;
-                      debugPrint('📡 [NATIVE CAPTURE] Fallback NIK $nik terdeteksi via onLoadResource');
+                      var familyId = '';
+                      try {
+                        familyId = Uri.parse(resourceUrl).queryParameters['familyId'] ?? '';
+                      } catch (_) {}
+                      debugPrint('📡 [NATIVE CAPTURE] NIK $nik | FamID: $familyId');
                       await context.read<CustomerProvider>().autoSaveCustomerFromPortalQuota({
                         'nik': nik,
+                        'familyId': familyId,
                         'category': 'Rumah Tangga',
                         'isEnriched': 1,
                       });
@@ -616,50 +621,59 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   static const String _safeCustomerCaptureScript = r'''
 (function() {
-  if (window.__pcSmartMergeV3) return;
-  window.__pcSmartMergeV3 = true;
-  console.log("🔔 [INTERCEPTOR INIT] Smart Merge Interceptor v3.0 Active!");
+  if (window.__pcSmartParameterQuota) return;
+  window.__pcSmartParameterQuota = true;
+  console.log("[INTERCEPTOR INIT] Smart Parameter & Quota Interceptor Active!");
   var customerCache = {};
-  function dispatchToFlutter(sourceTag, payload) {
-    try {
-      console.log("🚀 [JS STEP 4] (" + sourceTag + ") Sending Merged Payload:", JSON.stringify(payload));
-      if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
-        window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload).catch(function(err) { console.log("❌ [JS STEP 5 ERR]:", String(err)); });
-      }
-    } catch (error) { console.log("❌ [JS DISPATCH EXCEPTION]:", String(error)); }
+  function dispatchToFlutter(tag, payload) {
+    console.log("[JS STEP 4] (" + tag + ") Sending Payload to Flutter:", JSON.stringify(payload));
+    if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === "function") {
+      window.flutter_inappwebview.callHandler("onMyPertaminaCustomerCaptured", payload)
+        .then(function() { console.log("[JS STEP 5 SUCCESS] Flutter Handler Merespon!"); })
+        .catch(function(err) { console.log("[JS STEP 5 ERR]:", String(err)); });
+    }
   }
   var origFetch = window.fetch;
   window.fetch = async function() {
     var response = await origFetch.apply(this, arguments);
     try {
-      var input = arguments[0], urlStr = String(input && input.url || input || '');
-      var isVerify = urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1;
-      var isQuota = urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1;
+      var input = arguments[0], urlStr = String(input && input.url || input || "");
+      var isVerify = urlStr.indexOf("/verify-nik") !== -1 || urlStr.indexOf("nationalityId=") !== -1;
+      var isQuota = urlStr.indexOf("/customers/") !== -1 && urlStr.indexOf("/quota") !== -1;
       if (!isVerify && !isQuota) return response;
-      var match = urlStr.match(/\b\d{16}\b/), nik = match ? String(match[0]) : '';
+      var match = urlStr.match(/\b\d{16}\b/), nik = match ? String(match[0]) : "";
       if (nik.length !== 16) return response;
-      response.clone().json().then(function(data) {
-        var body = data && data.data || data || {};
-        var existing = customerCache[nik] || {nik: nik, nama: 'Pelanggan ' + nik, familyId: '', category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 1};
-        if (isVerify) {
-          var realName = String(body.name || body.nama || '').trim();
-          var familyId = String(body.familyIdEncrypted || body.familyId || '').trim();
+      if (isVerify) {
+        response.clone().json().then(function(vData) {
+          var body = vData && vData.data || vData || {};
+          var existing = customerCache[nik] || {nik: nik, nama: "Pelanggan " + nik, familyId: "", category: "Rumah Tangga", remainingQuota: 0, isEnriched: 1};
+          var realName = String(body.name || "").trim();
+          var familyId = String(body.familyIdEncrypted || body.familyId || "").trim();
           if (realName) existing.nama = realName;
           if (familyId) existing.familyId = familyId;
-          dispatchToFlutter('VERIFY_NIK_MERGE', existing);
-        } else {
-          var quota = body.quotaRemaining || {};
-          var parsedQuota = Number(quota.monthly !== undefined ? quota.monthly : quota.family);
+          customerCache[nik] = existing;
+          dispatchToFlutter("VERIFY_NIK", existing);
+        }).catch(function() {});
+      } else {
+        var familyIdFromUrl = "";
+        try { familyIdFromUrl = new URL(urlStr).searchParams.get("familyId") || ""; } catch (error) {}
+        var existing = customerCache[nik] || {nik: nik, nama: "Pelanggan " + nik, familyId: familyIdFromUrl, category: "Rumah Tangga", remainingQuota: 0, isEnriched: 1};
+        if (familyIdFromUrl && !existing.familyId) existing.familyId = familyIdFromUrl;
+        response.clone().json().then(function(qData) {
+          var quota = qData && qData.data && qData.data.quotaRemaining || {};
+          var rawQuota = quota.monthly !== undefined ? quota.monthly : quota.family;
+          var parsedQuota = Number(rawQuota);
           existing.remainingQuota = Number.isFinite(parsedQuota) ? parsedQuota : 0;
-          dispatchToFlutter('QUOTA_MERGE', existing);
-        }
-        customerCache[nik] = existing;
-      }).catch(function(error) { console.log('[JS JSON ERROR]', String(error)); });
-    } catch (error) { console.log("❌ [JS GLOBAL FETCH ERROR]:", String(error)); }
+          customerCache[nik] = existing;
+          dispatchToFlutter("QUOTA_JSON", existing);
+        }).catch(function() { customerCache[nik] = existing; dispatchToFlutter("QUOTA_FALLBACK", existing); });
+      }
+    } catch (error) {}
     return response;
   };
 })();
 ''';
+
   static const String _diagnosticCustomerCaptureScript = r'''
 (function() {
   if (window.__pcDiagnosticCustomerCapture) return;

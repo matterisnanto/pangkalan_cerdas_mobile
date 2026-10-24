@@ -88,12 +88,12 @@ class CustomerProvider extends ChangeNotifier {
         'isEnriched': 1,
         'updatedAt': DateTime.now().toIso8601String(),
       };
-      debugPrint('⚙️ [PROVIDER STEP 2] Menyimpan ke SQLite: $customerData');
+      debugPrint('💾 [SQLITE SMART UPSERT]: $customerData');
       await LocalDatabaseService.instance.upsertCustomer(customerData);
       debugPrint('✅ [PROVIDER STEP 3] Upsert SQLite sukses: $nik');
       await _pelangganService.addPelanggan(customer);
       await _pelangganService.getAllPelanggan();
-      debugPrint('✅ [V5 CUSTOMER] Pelanggan tersimpan dan daftar SQLite dimuat ulang: $nik');
+      debugPrint('✅ [SQLITE SMART SAVE SUCCESS] NIK $nik | Nama: $name | FamID: $familyId | Kuota: $remainingQuota');
       notifyListeners();
     } catch (e, stackTrace) {
       debugPrint('❌ [SQLITE PROVIDER ERROR] Tahap simpan customer gagal: $e\n$stackTrace');
