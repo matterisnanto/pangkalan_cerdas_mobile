@@ -370,7 +370,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                   controller.addJavaScriptHandler(
                     handlerName: 'onMyPertaminaCustomerCaptured',
                     callback: (args) async {
-                      debugPrint('📥 [FLUTTER HANDLER STEP 5 DITERIMA] Raw args: $args');
+                      debugPrint('📥 [FLUTTER STEP 5 RECEIVED] Raw args: $args');
                       if (args.isEmpty || args.first == null) {
                         debugPrint('⚠️ [FLUTTER WARNING] Payload kosong!');
                         return;
@@ -646,7 +646,18 @@ class _WebViewScreenState extends State<WebViewScreen>
 (function() {
   if (window.__pcDiagnosticCustomerCapture) return;
   window.__pcDiagnosticCustomerCapture = true;
-  console.log('[INTERCEPTOR INIT] Interceptor Diagnostik Aktif!');
+  console.log('[INTERCEPTOR INIT] Interceptor dengan Global Error Logger Aktif!');
+  window.onerror = function(message, source, line, column, error) {
+    console.log('[GLOBAL JS ERROR]: ' + String(message) + ' at ' + line + ':' + column);
+    return false;
+  };
+  window.addEventListener('unhandledrejection', function(event) {
+    var reason = event && event.reason || '';
+    var text = String(reason && reason.message || reason);
+    if (text.indexOf('Firebase') < 0 && text.indexOf('messaging') < 0) {
+      console.log('[UNHANDLED PROMISE REJECTION]: ' + text);
+    }
+  });
   function safeDispatch(tag, payload) {
     try {
       console.log('[JS STEP 4] (' + tag + ') Memeriksa Flutter bridge');
@@ -670,7 +681,7 @@ class _WebViewScreenState extends State<WebViewScreen>
       if (nik.length !== 16) { console.log('[JS STEP 3 CANCELLED] NIK tidak valid:', nik); return response; }
       console.log('[JS STEP 3] Extracted NIK:', nik);
       var immediatePayload = {nik: nik, nama: 'Pelanggan ' + nik, category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 0};
-      safeDispatch('NIK_EXTRACTED_IMMEDIATE', immediatePayload);
+      safeDispatch('DIRECT_STEP3', immediatePayload);
       try {
         response.clone().json().then(function(data) {
           try {
