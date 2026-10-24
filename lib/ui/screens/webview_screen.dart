@@ -669,6 +669,8 @@ class _WebViewScreenState extends State<WebViewScreen>
       var match = url.match(/\b\d{16}\b/), nik = match ? String(match[0]).trim() : '';
       if (nik.length !== 16) { console.log('[JS STEP 3 CANCELLED] NIK tidak valid:', nik); return response; }
       console.log('[JS STEP 3] Extracted NIK:', nik);
+      var immediatePayload = {nik: nik, nama: 'Pelanggan ' + nik, category: 'Rumah Tangga', remainingQuota: 0, isEnriched: 0};
+      safeDispatch('NIK_EXTRACTED_IMMEDIATE', immediatePayload);
       try {
         response.clone().json().then(function(data) {
           try {
