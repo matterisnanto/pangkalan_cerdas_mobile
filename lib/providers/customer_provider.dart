@@ -64,7 +64,7 @@ class CustomerProvider extends ChangeNotifier {
       // 2. Evaluasi Nama Asli
       final incomingNama = data['nama']?.toString() ?? data['name']?.toString() ?? '';
       if (incomingNama.isNotEmpty && !incomingNama.startsWith('Pelanggan ')) {
-        // Payload membawa Nama Asli resmi (misal: "HENI ZAINI")
+        // Incoming membawa Nama Asli resmi (misal: "HENI ZAINI" / "ROSANIH")
         currentNama = incomingNama.trim();
       } else if (currentNama.isEmpty || currentNama.startsWith('Pelanggan ')) {
         if (incomingNama.isNotEmpty) {

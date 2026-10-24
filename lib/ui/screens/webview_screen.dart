@@ -622,102 +622,104 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   static const String _safeCustomerCaptureScript = r'''
 (function() {
-  console.log("🔔 [INTERCEPTOR INIT] Global Response Prototype Interceptor Active!");
+  console.log("🔔 [INTERCEPTOR INIT] Fail-Safe Interceptor v5.0 Active!");
   var customerCache = {};
 
+  function safeExtractFamId(url) {
+    try {
+      var match = url.match(/[?&]familyId=([^&]+)/);
+      return match ? decodeURIComponent(match[1]) : "";
+    } catch(e) {
+      return "";
+    }
+  }
+
   function dispatchToFlutter(tag, payload) {
-    console.log("🚀 [JS STEP 4] (" + tag + ") Dispatching Merged Data:", JSON.stringify(payload));
-    if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
-      window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload)
-        .then(function(res) {
-          console.log("✅ [JS STEP 5 SUCCESS] Flutter Handler Merespon!");
-        })
-        .catch(function(err) {
-          console.log("❌ [JS STEP 5 ERR]:", String(err));
-        });
+    try {
+      console.log("🚀 [JS STEP 4] (" + tag + ") Dispatching Payload:", JSON.stringify(payload));
+      if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
+        window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload)
+          .then(function(res) {
+            console.log("✅ [JS STEP 5 SUCCESS] Flutter Handler Merespon!");
+          })
+          .catch(function(err) {
+            console.log("❌ [JS STEP 5 ERR]:", String(err));
+          });
+      } else {
+        console.log("⚠️ [JS STEP 4 WARN] flutter_inappwebview.callHandler belum siap");
+      }
+    } catch(eDispatch) {
+      console.log("❌ [JS DISPATCH EXCEPTION]:", String(eDispatch));
     }
   }
 
-  function processCapturedJson(urlStr, jsonData) {
-    var match = urlStr.match(/\b\d{16}\b/);
-    var nik = match ? String(match) : "";
-    if (!nik || nik.length !== 16) return;
+  function handleCapturedData(urlStr, jsonData) {
+    try {
+      var matchNik = urlStr.match(/\b\d{16}\b/);
+      var nik = matchNik ? String(matchNik) : "";
+      if (!nik || nik.length !== 16) return;
 
-    var existing = customerCache[nik] || {
-      "nik": nik,
-      "nama": "",
-      "familyId": "",
-      "category": "Rumah Tangga",
-      "remainingQuota": 0,
-      "isEnriched": 1
-    };
+      var famIdUrl = safeExtractFamId(urlStr);
 
-    // A. TANGKAP VERIFY-NIK (AMBIL NAMA ASLI "HENI ZAINI" & FAMILY ID)
-    if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
-      if (jsonData && jsonData.data) {
-        if (jsonData.data.name) {
-          existing.nama = String(jsonData.data.name).trim();
-        }
-        if (jsonData.data.familyIdEncrypted) {
-          existing.familyId = String(jsonData.data.familyIdEncrypted).trim();
-        }
+      var existing = customerCache[nik] || {
+        "nik": nik,
+        "nama": "Pelanggan " + nik,
+        "familyId": famIdUrl,
+        "category": "Rumah Tangga",
+        "remainingQuota": 0,
+        "isEnriched": 1
+      };
+
+      if (famIdUrl && !existing.familyId) {
+        existing.familyId = famIdUrl;
       }
-      console.log("🎯 [JS STEP 3 VERIFY] Nama Asli:", existing.nama, "| FamID:", existing.familyId);
-      customerCache[nik] = existing;
-      dispatchToFlutter("VERIFY_NIK_SUCCESS", existing);
-    }
 
-    // B. TANGKAP QUOTA (AMBIL SISA KUOTA 6 TABUNG & FAMILY ID)
-    if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
-      try {
-        var urlObj = new URL(urlStr);
-        var famIdUrl = urlObj.searchParams.get("familyId");
-        if (famIdUrl && !existing.familyId) existing.familyId = famIdUrl;
-      } catch(e) {}
-
-      if (jsonData && jsonData.data && jsonData.data.quotaRemaining) {
-        var qr = jsonData.data.quotaRemaining;
-        var q = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
-        existing.remainingQuota = Number(q) || 0;
+      // A. PENYADAP VERIFY-NIK (AMBIL NAMA ASLI)
+      if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
+        if (jsonData && jsonData.data) {
+          if (jsonData.data.name) {
+            existing.nama = String(jsonData.data.name).trim();
+          }
+          if (jsonData.data.familyIdEncrypted) {
+            existing.familyId = String(jsonData.data.familyIdEncrypted).trim();
+          }
+        }
+        console.log("🎯 [JS STEP 3 VERIFY] Nama Asli:", existing.nama, "| FamID:", existing.familyId);
+        customerCache[nik] = existing;
+        dispatchToFlutter("VERIFY_NIK_SUCCESS", existing);
       }
-      console.log("🎯 [JS STEP 3 QUOTA] Kuota:", existing.remainingQuota);
-      customerCache[nik] = existing;
-      dispatchToFlutter("QUOTA_SUCCESS", existing);
+
+      // B. PENYADAP QUOTA (AMBIL SISA KUOTA 6 TABUNG)
+      if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
+        if (jsonData && jsonData.data && jsonData.data.quotaRemaining) {
+          var qr = jsonData.data.quotaRemaining;
+          var q = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
+          existing.remainingQuota = Number(q) || 0;
+        }
+        console.log("🎯 [JS STEP 3 QUOTA] Kuota Asli:", existing.remainingQuota);
+        customerCache[nik] = existing;
+        dispatchToFlutter("QUOTA_SUCCESS", existing);
+      }
+    } catch(eHandle) {
+      console.log("❌ [JS HANDLE EXCEPTION]:", String(eHandle));
     }
   }
 
-  // OVERRIDE RESPONSE.PROTOTYPE.JSON (BEBAS STREAM LOCK 100%)
+  // OVERRIDE RESPONSE.PROTOTYPE.JSON (100% BEBAS STREAM LOCK)
   var origJson = Response.prototype.json;
   Response.prototype.json = function() {
     var self = this;
     var urlStr = self.url || "";
     return origJson.apply(this, arguments).then(function(data) {
       try {
-        if (urlStr && (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('/quota') !== -1 || urlStr.indexOf('/customers/') !== -1)) {
+        if (urlStr && (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('/quota') !== -1 || urlStr.indexOf('/customers/') !== -1 || urlStr.indexOf('nationalityId=') !== -1)) {
           console.log("🔍 [JS STEP 2 INTERCEPT] JSON Captured for:", urlStr);
-          processCapturedJson(urlStr, data);
+          handleCapturedData(urlStr, data);
         }
-      } catch(e) {
-        console.log("❌ [JS INTERCEPT ERR]:", String(e));
+      } catch(eErr) {
+        console.log("❌ [JS PROTOTYPE ERR]:", String(eErr));
       }
       return data;
-    });
-  };
-
-  // OVERRIDE RESPONSE.PROTOTYPE.TEXT JUGA SEBAGAI CADANGAN
-  var origText = Response.prototype.text;
-  Response.prototype.text = function() {
-    var self = this;
-    var urlStr = self.url || "";
-    return origText.apply(this, arguments).then(function(txt) {
-      try {
-        if (urlStr && (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('/quota') !== -1 || urlStr.indexOf('/customers/') !== -1)) {
-          var data = JSON.parse(txt);
-          console.log("🔍 [JS STEP 2 INTERCEPT TEXT] JSON Captured for:", urlStr);
-          processCapturedJson(urlStr, data);
-        }
-      } catch(e) {}
-      return txt;
     });
   };
 })();
