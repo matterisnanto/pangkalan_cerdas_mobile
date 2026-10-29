@@ -35,12 +35,12 @@ class CustomerProvider extends ChangeNotifier {
 
   Future<void> autoSaveCustomerFromPortalQuota(Map<String, dynamic> data) async {
     try {
+      debugPrint('📥 [PROVIDER INCOMING] autoSaveCustomerFromPortalQuota data: $data');
       final nik = data['nik']?.toString().trim() ?? '';
       if (nik.length != 16) return;
 
       final db = await LocalDatabaseService.instance.database;
 
-      // 1. Ambil data eksisting dari SQLite
       final existingRows = await db.query(
         'customers',
         where: 'nik = ?',
@@ -48,54 +48,61 @@ class CustomerProvider extends ChangeNotifier {
         limit: 1,
       );
 
-      String finalNama = 'Pelanggan $nik';
-      String finalFamilyId = '';
-      int finalQuota = 0;
-      String finalCategory = 'Rumah Tangga';
+      String currentNama = '';
+      String currentFamilyId = '';
+      int currentQuota = 0;
+      String currentCategory = 'Rumah Tangga';
 
       if (existingRows.isNotEmpty) {
         final old = existingRows.first;
-        finalNama = old['nama']?.toString() ?? '';
-        finalFamilyId = old['familyId']?.toString() ?? '';
-        finalQuota = (old['remainingQuota'] as num?)?.toInt() ?? 0;
-        finalCategory = old['category']?.toString() ?? 'Rumah Tangga';
+        currentNama = old['nama']?.toString() ?? '';
+        currentFamilyId = old['familyId']?.toString() ?? '';
+        currentQuota = (old['remainingQuota'] as num?)?.toInt() ?? 0;
+        currentCategory = old['category']?.toString() ?? 'Rumah Tangga';
+        debugPrint('📋 [EXISTING DATA] NIK $nik | Nama: $currentNama | FamID: $currentFamilyId | Kuota: $currentQuota');
+      } else {
+        debugPrint('📋 [EXISTING DATA] NIK $nik BELUM ADA di SQLite');
       }
 
       // 1. Evaluasi Nama Asli
       final incomingNama = data['nama']?.toString() ?? data['name']?.toString() ?? '';
+      debugPrint('🔍 [NAMA EVAL] incoming: "$incomingNama" | current: "$currentNama"');
       if (incomingNama.isNotEmpty && !incomingNama.startsWith('Pelanggan ')) {
-        finalNama = incomingNama.trim();
+        currentNama = incomingNama.trim();
+      } else if (currentNama.isEmpty) {
+        currentNama = incomingNama.isNotEmpty ? incomingNama.trim() : 'Pelanggan $nik';
       }
 
       // 2. Evaluasi Family ID
       final incomingFamId = data['familyId']?.toString() ?? '';
       if (incomingFamId.isNotEmpty) {
-        finalFamilyId = incomingFamId.trim();
+        currentFamilyId = incomingFamId.trim();
       }
 
       // 3. Evaluasi Sisa Kuota
       if (data.containsKey('remainingQuota') && data['remainingQuota'] != null) {
         final incomingQuota = (data['remainingQuota'] as num).toInt();
-        if (incomingQuota > 0) {
-          finalQuota = incomingQuota;
+        debugPrint('🔍 [KUOTA EVAL] incoming: $incomingQuota | current: $currentQuota');
+        if (incomingQuota > 0 || currentQuota == 0) {
+          currentQuota = incomingQuota;
         }
       }
 
       if (data['category'] != null && data['category'].toString().isNotEmpty) {
-        finalCategory = data['category'].toString();
+        currentCategory = data['category'].toString();
       }
 
       final customerMap = {
         'nik': nik,
-        'nama': finalNama,
-        'familyId': finalFamilyId,
-        'category': finalCategory,
-        'remainingQuota': finalQuota,
+        'nama': currentNama,
+        'familyId': currentFamilyId,
+        'category': currentCategory,
+        'remainingQuota': currentQuota,
         'isEnriched': 1,
         'updatedAt': DateTime.now().toIso8601String(),
       };
 
-      debugPrint('💾 [SQLITE SMART UPSERT]: $customerMap');
+      debugPrint('💾 [SQLITE SAVING DATA]: $customerMap');
       await db.insert(
         'customers',
         customerMap,
@@ -103,7 +110,7 @@ class CustomerProvider extends ChangeNotifier {
       );
 
       notifyListeners();
-      debugPrint('✅ [SQLITE SMART SAVE SUCCESS] NIK $nik | Nama: $finalNama | FamID: $finalFamilyId | Kuota: $finalQuota');
+      debugPrint('✅ [SQLITE SUCCESS] NIK $nik | Nama: $currentNama | FamID: $currentFamilyId | Kuota: $currentQuota');
     } catch (e, stack) {
       debugPrint('❌ [SQLITE PROVIDER ERROR]: $e\n$stack');
     }

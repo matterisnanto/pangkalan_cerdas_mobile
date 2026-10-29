@@ -370,24 +370,20 @@ class _WebViewScreenState extends State<WebViewScreen>
                   controller.addJavaScriptHandler(
                     handlerName: 'onMyPertaminaCustomerCaptured',
                     callback: (args) async {
-                      debugPrint('📥 [FLUTTER STEP 5 RECEIVED] Raw args: $args');
+                      debugPrint('📥 [FLUTTER HANDLER CALL] Diterima dari JS! Raw args: $args');
                       if (args.isEmpty || args.first == null) {
-                        debugPrint('⚠️ [FLUTTER WARNING] Payload kosong!');
-                        return;
+                        debugPrint('⚠️ [FLUTTER HANDLER WARN] Args kosong!');
+                        return {'status': 'EMPTY_ARGS'};
                       }
+
                       try {
                         final data = Map<String, dynamic>.from(args.first as Map);
-                        final nik = data['nik']?.toString().trim() ?? '';
-                        debugPrint('🔍 [FLUTTER PARSED DATA] NIK: $nik | Nama: ${data['nama'] ?? data['name']} | Kuota: ${data['remainingQuota']}');
-                        if (nik.length == 16) {
-                          debugPrint('💾 [SQLITE DIRECT SAVE] Menyimpan NIK $nik ke database SQLite...');
-                          await context.read<CustomerProvider>().autoSaveCustomerFromPortalQuota(data);
-                          debugPrint('✅ [SQLITE AUTO-SAVE SUCCESS] NIK $nik BERHASIL tersimpan & UI diperbarui!');
-                        } else {
-                          debugPrint('⚠️ [FLUTTER CANCELLED] NIK tidak 16 digit: "$nik"');
-                        }
-                      } catch (e, stack) {
-                        debugPrint('❌ [FLUTTER HANDLER EXCEPTION]: $e\n$stack');
+                        debugPrint('📥 [FLUTTER HANDLER DATA] Parsed: $data');
+                        await context.read<CustomerProvider>().autoSaveCustomerFromPortalQuota(data);
+                        return {'status': 'SUCCESS'};
+                      } catch (e, st) {
+                        debugPrint('❌ [FLUTTER HANDLER ERROR]: $e\n$st');
+                        return {'status': 'ERROR', 'message': e.toString()};
                       }
                     },
                   );
@@ -622,23 +618,39 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   static const String _safeCustomerCaptureScript = r'''
 (function() {
-  console.log("🔔 [INTERCEPTOR INIT] Inline Fail-Safe Interceptor v6.0 Active!");
-  var customerCache = {};
+  console.log("🔔 [DIAGNOSTIC INIT] Script Diagnostik JS STEP 3-5 Aktif!");
 
-  function sendToFlutterDirect(tag, payload) {
+  window.onerror = function(msg, url, line, col, error) {
+    console.log("❌ [JS FATAL ERROR] " + msg + " (Line " + line + ":" + col + ")");
+    if (error && error.stack) console.log("📜 [JS STACK]: " + error.stack);
+    return false;
+  };
+
+  function triggerFlutterHandler(sourceTag, payload) {
+    console.log("🔍 [JS STEP 4 DIAGNOSTIC] Memeriksa window.flutter_inappwebview...");
+
+    if (!window.flutter_inappwebview) {
+      console.log("❌ [JS STEP 4 FAIL] window.flutter_inappwebview UNDEFINED!");
+      return;
+    }
+
+    if (typeof window.flutter_inappwebview.callHandler !== 'function') {
+      console.log("❌ [JS STEP 4 FAIL] window.flutter_inappwebview.callHandler BUKAN FUNGSI! Type: " + typeof window.flutter_inappwebview.callHandler);
+      return;
+    }
+
+    console.log("🚀 [JS STEP 4 EXECUTING] (" + sourceTag + ") Memanggil callHandler dengan payload:", JSON.stringify(payload));
+
     try {
-      console.log("🚀 [JS STEP 4] (" + tag + ") Sending Payload:", JSON.stringify(payload));
-      if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
-        window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload)
-          .then(function(res) {
-            console.log("✅ [JS STEP 5 SUCCESS] Flutter Handler Merespon!");
-          })
-          .catch(function(err) {
-            console.log("❌ [JS STEP 5 ERR]:", String(err));
-          });
-      }
-    } catch(e) {
-      console.log("❌ [JS STEP 4 EXCEPTION]:", String(e));
+      window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload)
+        .then(function(res) {
+          console.log("✅ [JS STEP 5 SUCCESS] Flutter merespon dari Handler! Res:", JSON.stringify(res));
+        })
+        .catch(function(err) {
+          console.log("❌ [JS STEP 5 ERROR] CallHandler rejected:", String(err));
+        });
+    } catch(eCall) {
+      console.log("❌ [JS STEP 4 EXCEPTION]:", String(eCall.message || eCall));
     }
   }
 
@@ -650,73 +662,58 @@ class _WebViewScreenState extends State<WebViewScreen>
       try {
         if (!urlStr || typeof urlStr !== 'string') return jsonData;
 
-        // A. TANGKAP API VERIFY-NIK (AMBIL NAMA ASLI "HENI ZAINI" / "ROSANIH")
-        if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
-          console.log("🔍 [JS STEP 1] Verify-NIK API Terdeteksi:", urlStr);
-          var m1 = urlStr.match(/\b\d{16}\b/);
-          var nik1 = m1 ? String(m1) : "";
+        // LOG SETIAP API TERKAIT
+        if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('/quota') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
+          console.log("🔍 [JS STEP 1-2 DIAGNOSTIC] URL Intercepted:", urlStr);
 
-          if (nik1 && nik1.length === 16 && jsonData && jsonData.data) {
-            var realName = jsonData.data.name || "";
-            var famId1 = jsonData.data.familyIdEncrypted || "";
+          var matchNik = urlStr.match(/\b\d{16}\b/);
+          var nik = matchNik ? String(matchNik) : "";
 
-            var obj1 = customerCache[nik1] || {
-              "nik": nik1,
-              "nama": "Pelanggan " + nik1,
-              "familyId": famId1,
+          if (nik && nik.length === 16) {
+            console.log("🔍 [JS STEP 3 DIAGNOSTIC] Extracted NIK:", nik);
+
+            var payload = {
+              "nik": nik,
+              "nama": "Pelanggan " + nik,
+              "familyId": "",
               "category": "Rumah Tangga",
               "remainingQuota": 0,
               "isEnriched": 1
             };
 
-            if (realName) obj1.nama = String(realName).trim();
-            if (famId1) obj1.familyId = String(famId1).trim();
+            // BUNGKUS DENGAN TRY CATCH KHUSUS PARSING DATA
+            try {
+              if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
+                if (jsonData && jsonData.data) {
+                  if (jsonData.data.name) payload.nama = String(jsonData.data.name).trim();
+                  if (jsonData.data.familyIdEncrypted) payload.familyId = String(jsonData.data.familyIdEncrypted).trim();
+                }
+                console.log("🎯 [JS STEP 3 VERIFY PARSED] Nama:", payload.nama, "| FamID:", payload.familyId);
+                triggerFlutterHandler("VERIFY_NIK_TAG", payload);
+              }
 
-            customerCache[nik1] = obj1;
-            console.log("🎯 [JS STEP 3 VERIFY SUCCESS] Nama Asli:", obj1.nama);
-            sendToFlutterDirect("VERIFY_NIK_INLINE", obj1);
-          }
-        }
+              if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
+                var famMatch = urlStr.match(/[?&]familyId=([^&]+)/);
+                if (famMatch && famMatch[1]) {
+                  try { payload.familyId = decodeURIComponent(famMatch[1]); } catch(e){}
+                }
 
-        // B. TANGKAP API QUOTA (AMBIL SISA KUOTA 6 TABUNG & FAMILY ID)
-        if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
-          console.log("🔍 [JS STEP 1] Quota API Terdeteksi:", urlStr);
-          var m2 = urlStr.match(/\b\d{16}\b/);
-          var nik2 = m2 ? String(m2) : "";
-
-          var famIdUrl = "";
-          var famMatch = urlStr.match(/[?&]familyId=([^&]+)/);
-          if (famMatch) {
-            try { famIdUrl = decodeURIComponent(famMatch[1]); } catch(e){}
-          }
-
-          if (nik2 && nik2.length === 16) {
-            var obj2 = customerCache[nik2] || {
-              "nik": nik2,
-              "nama": "Pelanggan " + nik2,
-              "familyId": famIdUrl,
-              "category": "Rumah Tangga",
-              "remainingQuota": 0,
-              "isEnriched": 1
-            };
-
-            if (famIdUrl && !obj2.familyId) obj2.familyId = famIdUrl;
-
-            var quotaVal = 0;
-            if (jsonData && jsonData.data && jsonData.data.quotaRemaining) {
-              var qr = jsonData.data.quotaRemaining;
-              quotaVal = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
+                if (jsonData && jsonData.data && jsonData.data.quotaRemaining) {
+                  var qr = jsonData.data.quotaRemaining;
+                  var q = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
+                  payload.remainingQuota = Number(q) || 0;
+                }
+                console.log("🎯 [JS STEP 3 QUOTA PARSED] Kuota:", payload.remainingQuota, "| FamID:", payload.familyId);
+                triggerFlutterHandler("QUOTA_TAG", payload);
+              }
+            } catch(eParseInner) {
+              console.log("❌ [JS STEP 3 INNER ERROR]:", String(eParseInner.message || eParseInner));
+              triggerFlutterHandler("FALLBACK_TAG", payload);
             }
-
-            obj2.remainingQuota = Number(quotaVal) || 0;
-            customerCache[nik2] = obj2;
-
-            console.log("🎯 [JS STEP 3 QUOTA SUCCESS] Kuota Asli:", obj2.remainingQuota);
-            sendToFlutterDirect("QUOTA_INLINE", obj2);
           }
         }
-      } catch(eGlobal) {
-        console.log("❌ [JS INTERCEPT CRASH CATCH]:", String(eGlobal));
+      } catch(eOuter) {
+        console.log("❌ [JS OUTER INTERCEPT ERROR]:", String(eOuter.message || eOuter));
       }
       return jsonData;
     });
