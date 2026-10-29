@@ -291,8 +291,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                     source:
                         _firebaseMessagingSuppressorScript +
                         _tokenInterceptorScript +
-                        _safeCustomerCaptureScript +
-                        _postTransactionInterceptorScript +
+                        _passiveEventInterceptorScript +
                         _transactionBridgeScript,
                     injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
                     forMainFrameOnly: false,
@@ -452,7 +451,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                 },
                 onLoadStop: (controller, url) async {
                   await controller.evaluateJavascript(
-                    source: _postTransactionInterceptorScript,
+                    source: _passiveEventInterceptorScript,
                   );
                   await controller.evaluateJavascript(
                     source: _transactionBridgeScript,
@@ -649,112 +648,22 @@ class _WebViewScreenState extends State<WebViewScreen>
 })();
 ''';
 
-  static const String _safeCustomerCaptureScript = r'''
+  static const String _passiveEventInterceptorScript = r'''
 (function() {
-  console.log("🔔 [QUEUED INTERCEPTOR v10.0] Passive Queue Interceptor Active!");
-  window.__customerQueue = window.__customerQueue || [];
-  var customerCache = {};
+  console.log("🔔 [PASSIVE EVENT INTERCEPTOR v11.0] Active!");
+  var customerMemory = {};
 
-  function flushQueue() {
+  function dispatchToFlutter(handlerName, payload) {
     if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
-      while (window.__customerQueue.length > 0) {
-        var item = window.__customerQueue.shift();
-        console.log("🚀 [JS QUEUE FLUSH] Dispatching to Flutter:", JSON.stringify(item));
-        window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', item)
-          .then(function() {
-            console.log("✅ [JS FLUSH SUCCESS] Data tersimpan di SQLite!");
-          })
-          .catch(function(e) {
-            console.log("❌ [JS FLUSH ERR]:", String(e));
-          });
-      }
-    }
-  }
-
-  window.addEventListener("flutterInAppWebViewPlatformReady", function() {
-    console.log("⚡ [BRIDGE READY] flutterInAppWebViewPlatformReady fired!");
-    flushQueue();
-  });
-
-  setInterval(flushQueue, 500);
-
-  function queuePayload(tag, payload) {
-    console.log("📥 [JS QUEUED] (" + tag + "):", JSON.stringify(payload));
-    window.__customerQueue.push(payload);
-    flushQueue();
-  }
-
-  var origJson = Response.prototype.json;
-  Response.prototype.json = function() {
-    var self = this;
-    var urlStr = self.url || "";
-    return origJson.apply(this, arguments).then(function(jsonData) {
-      try {
-        if (urlStr && (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('/quota') !== -1 || urlStr.indexOf('/customers/') !== -1 || urlStr.indexOf('nationalityId=') !== -1)) {
-          var matchNik = urlStr.match(/\b\d{16}\b/);
-          var nik = matchNik ? String(matchNik) : "";
-
-          if (nik && nik.length === 16 && jsonData && jsonData.data) {
-            var existing = customerCache[nik] || {
-              "nik": nik,
-              "nama": "",
-              "familyId": "",
-              "category": "Rumah Tangga",
-              "remainingQuota": 0,
-              "isEnriched": 1
-            };
-
-            // A. TANGKAP API VERIFY-NIK (AMBIL NAMA ASLI)
-            if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
-              if (jsonData.data.name) existing.nama = String(jsonData.data.name).trim();
-              if (jsonData.data.familyIdEncrypted) existing.familyId = String(jsonData.data.familyIdEncrypted).trim();
-              customerCache[nik] = existing;
-              console.log("🎯 [JS STEP 3 VERIFY] Nama Asli Ditangkap:", existing.nama);
-              queuePayload("VERIFY_NIK_QUEUE", existing);
-            }
-
-            // B. TANGKAP API QUOTA (AMBIL SISA KUOTA)
-            if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
-              var famMatch = urlStr.match(/[?&]familyId=([^&]+)/);
-              if (famMatch) {
-                try { existing.familyId = decodeURIComponent(famMatch[1]); } catch(e){}
-              }
-              if (jsonData.data.quotaRemaining) {
-                var qr = jsonData.data.quotaRemaining;
-                var q = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
-                existing.remainingQuota = Number(q) || 0;
-              }
-              customerCache[nik] = existing;
-              console.log("🎯 [JS STEP 3 QUOTA] Kuota Ditangkap:", existing.remainingQuota);
-              queuePayload("QUOTA_QUEUE", existing);
-            }
-          }
-        }
-      } catch(eErr) {
-        console.log("❌ [JS INTERCEPT ERR]:", String(eErr));
-      }
-      return jsonData;
-    });
-  };
-})();
-''';
-
-  static const String _postTransactionInterceptorScript = r'''
-(function() {
-  console.log("🔔 [POST-TRANSACTION INTERCEPTOR] Listening for Completed Transactions!");
-
-  function sendCompletedTransactionToFlutter(payload) {
-    console.log("🚀 [TRANSACTION SUCCESS INTERCEPTED]:", JSON.stringify(payload));
-    if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
-      window.flutter_inappwebview.callHandler('onMyPertaminaTransactionCompleted', payload)
+      window.flutter_inappwebview.callHandler(handlerName, payload)
         .then(function() {
-          console.log("✅ [FLUTTER SAVE SUCCESS] Data Pelanggan & Riwayat tersimpan!");
+          console.log("✅ [FLUTTER HANDLED] " + handlerName + " Success!");
         })
         .catch(function(e) {
-          console.log("❌ [FLUTTER SAVE ERR]:", String(e));
+          console.log("❌ [FLUTTER HANDLER ERR]:", String(e));
         });
     } else {
-      setTimeout(function() { sendCompletedTransactionToFlutter(payload); }, 500);
+      setTimeout(function() { dispatchToFlutter(handlerName, payload); }, 500);
     }
   }
 
@@ -766,18 +675,83 @@ class _WebViewScreenState extends State<WebViewScreen>
       try {
         if (!urlStr || typeof urlStr !== 'string') return jsonData;
 
-        // Tangkap Respon Submit Transaksi / Detail Struk
+        // 1. SADAP /VERIFY-NIK (TANGKAP NAMA ASLI & FAMILY ID)
+        if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
+          var m1 = urlStr.match(/\b\d{16}\b/);
+          var nik1 = m1 ? String(m1) : "";
+          if (!nik1 && jsonData && jsonData.data && (jsonData.data.nik || jsonData.data.nationalityId)) {
+            nik1 = String(jsonData.data.nik || jsonData.data.nationalityId).trim();
+          }
+          if (nik1 && jsonData && jsonData.data) {
+            var cache1 = customerMemory[nik1] || {
+              "nik": nik1,
+              "nama": "",
+              "familyId": "",
+              "category": "Rumah Tangga",
+              "remainingQuota": 0,
+              "isEnriched": 1
+            };
+            if (jsonData.data.name) cache1.nama = String(jsonData.data.name).trim();
+            if (jsonData.data.familyIdEncrypted) cache1.familyId = String(jsonData.data.familyIdEncrypted).trim();
+            customerMemory[nik1] = cache1;
+            console.log("🎯 [EVENT 1: VERIFY-NIK] Captured Name:", cache1.nama);
+          }
+        }
+
+        // 2. SADAP /QUOTA (CEK SISA KUOTA)
+        if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
+          var m2 = urlStr.match(/\b\d{16}\b/);
+          var nik2 = m2 ? String(m2) : "";
+          if (nik2) {
+            var cache2 = customerMemory[nik2] || {
+              "nik": nik2,
+              "nama": "",
+              "familyId": "",
+              "category": "Rumah Tangga",
+              "remainingQuota": 0,
+              "isEnriched": 1
+            };
+
+            var famMatch = urlStr.match(/[?&]familyId=([^&]+)/);
+            if (famMatch) {
+              try { cache2.familyId = decodeURIComponent(famMatch[1]); } catch(e){}
+            }
+
+            var qVal = 0;
+            if (jsonData && jsonData.data && jsonData.data.quotaRemaining) {
+              var qr = jsonData.data.quotaRemaining;
+              qVal = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
+            }
+            cache2.remainingQuota = Number(qVal) || 0;
+            customerMemory[nik2] = cache2;
+
+            console.log("🎯 [EVENT 2: QUOTA] Captured Quota:", cache2.remainingQuota);
+
+            // SKENARIO B: Jika Kuota = 0, LANGSUNG kirim simpan profil pelanggan ke Flutter!
+            if (cache2.remainingQuota === 0 || (jsonData && jsonData.data && jsonData.data.isQuotaValid === false)) {
+              cache2.remainingQuota = 0;
+              console.log("⚠️ [SKENARIO B: KUOTA 0] Mengirim profil pelanggan kuota 0 ke SQLite...");
+              dispatchToFlutter('onMyPertaminaCustomerCaptured', cache2);
+            } else {
+              console.log("🎯 [SKENARIO A: KUOTA AKTIF] Mengirim profil pelanggan ke SQLite...");
+              dispatchToFlutter('onMyPertaminaCustomerCaptured', cache2);
+            }
+          }
+        }
+
+        // 3. SADAP STRUK / TRANSAKSI SUKSES (SKENARIO A)
         if (
           (urlStr.indexOf('/general/v3/transactions') !== -1 || 
            urlStr.indexOf('/general/v1/transactions/') !== -1 ||
            urlStr.indexOf('/sale/struk') !== -1) &&
           jsonData && jsonData.success === true && jsonData.data
         ) {
-          console.log("🎯 [TRANSACTION SUCCESS JSON DETECTED] URL:", urlStr);
-          sendCompletedTransactionToFlutter(jsonData.data);
+          console.log("🎯 [EVENT 3: STRUK SUKSES] Transaksi Selesai!");
+          dispatchToFlutter('onMyPertaminaTransactionCompleted', jsonData.data);
         }
+
       } catch(eErr) {
-        console.log("❌ [INTERCEPT ERROR]:", String(eErr));
+        console.log("❌ [INTERCEPT EXCEPTION]:", String(eErr));
       }
       return jsonData;
     });

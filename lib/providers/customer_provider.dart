@@ -184,10 +184,12 @@ class CustomerProvider extends ChangeNotifier {
       }
 
       if (data.containsKey('remainingQuota') && data['remainingQuota'] != null) {
-        final incomingQuota = (data['remainingQuota'] as num).toInt();
-        if (incomingQuota > 0 || currentQuota == 0) {
-          currentQuota = incomingQuota;
-        }
+        final rawVal = data['remainingQuota'];
+        final incomingQuota = rawVal is num
+            ? rawVal.toInt()
+            : (int.tryParse('$rawVal') ?? 0);
+        // Pastikan kuota 0 (Skenario B) tersimpan akurat ke SQLite
+        currentQuota = incomingQuota;
       }
 
       if (data['category'] != null && data['category'].toString().isNotEmpty) {
