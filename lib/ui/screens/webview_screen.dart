@@ -460,8 +460,9 @@ class _WebViewScreenState extends State<WebViewScreen>
                 },
                 onLoadResource: (controller, resource) async {
                   final urlStr = resource.url?.toString() ?? '';
-                  if (urlStr.contains('/customers/') ||
-                      urlStr.contains('/verify-nik') ||
+
+                  // Tangkap NIK & Family ID secara pasif dari URL /quota tanpa melakukan HTTP GET ulang ke /verify-nik
+                  if (urlStr.contains('/customers/') &&
                       urlStr.contains('/quota')) {
                     final match = RegExp(r'\b\d{16}\b').firstMatch(urlStr);
                     if (match != null) {
@@ -472,15 +473,19 @@ class _WebViewScreenState extends State<WebViewScreen>
                         familyId = uri.queryParameters['familyId'] ?? '';
                       } catch (_) {}
 
-                      debugPrint('📡 [NATIVE CAPTURE] NIK $nik | FamID: $familyId -> Triggers Direct Dart API Fetch');
-
-                      final token = context.read<AuthProvider>().token;
-                      // Panggil Direct API Request dari Flutter Dart
-                      context.read<CustomerProvider>().fetchAndEnrichCustomerDirectly(
-                        nik,
-                        familyIdHint: familyId.isNotEmpty ? familyId : null,
-                        authToken: token,
+                      debugPrint(
+                        '📡 [PASSIVE CAPTURE SAFE] NIK $nik | FamID: $familyId (Bebas Re-request Error)',
                       );
+
+                      // Simpan data pasif ke SQLite tanpa memicu http.get('/verify-nik')
+                      await context
+                          .read<CustomerProvider>()
+                          .autoSaveCustomerFromPortalQuota({
+                            'nik': nik,
+                            'familyId': familyId,
+                            'category': 'Rumah Tangga',
+                            'isEnriched': 1,
+                          });
                     }
                   }
                 },

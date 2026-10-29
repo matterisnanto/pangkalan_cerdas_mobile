@@ -41,6 +41,10 @@ class CustomerProvider extends ChangeNotifier {
     });
   }
 
+  /// JANGAN panggil metode ini selama sesi WebView transaksi aktif!
+  /// Pemanggilan /verify-nik dari Flutter di latar belakang membatalkan single-use token
+  /// portal MyPertamina, menyebabkan CUSTOMER_DATA_INVALID / verifikasi NIK ulang.
+  /// Ekstraksi Nama Asli dilakukan secara aman saat transaksi berhasil atau sinkronisasi report.
   Future<void> fetchAndEnrichCustomerDirectly(
     String nik, {
     String? familyIdHint,

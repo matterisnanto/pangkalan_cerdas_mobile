@@ -246,6 +246,24 @@ class TransactionProvider extends ChangeNotifier {
           'totalQuantity': item['total'],
           'createdAt': item['createdAt'],
         });
+
+        // Ekstrak & update Nama Asli resmi ke data pelanggan di SQLite jika full NIK valid
+        final fullNik = item['fullNik'].toString().trim();
+        final rawNik = item['nationalityId'].toString().trim();
+        final targetNik = fullNik.isNotEmpty ? fullNik : rawNik;
+        final realName = item['name'].toString().trim();
+
+        if (RegExp(r'^\d{16}$').hasMatch(targetNik) &&
+            realName.isNotEmpty &&
+            !realName.startsWith('Pelanggan ')) {
+          try {
+            final db = await _database.database;
+            await db.rawUpdate(
+              'UPDATE customers SET nama = ?, isEnriched = 1, updatedAt = ? WHERE nik = ? AND (nama LIKE "Pelanggan %" OR nama = "")',
+              [realName, DateTime.now().toIso8601String(), targetNik],
+            );
+          } catch (_) {}
+        }
       }
       debugPrint(
         '✅ [TRANSACTION PROVIDER] ${data.length} transaksi tersimpan ke SQLite.',
