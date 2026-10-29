@@ -215,6 +215,97 @@ class CustomerProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> saveEnrichedCustomerFromTransaction(
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final subsidi = (data['subsidi'] is Map)
+          ? Map<String, dynamic>.from(data['subsidi'] as Map)
+          : null;
+      final customer = (data['customer'] is Map)
+          ? Map<String, dynamic>.from(data['customer'] as Map)
+          : null;
+
+      // 1. Ekstrak NIK
+      String nik = (subsidi?['nik'] ??
+              customer?['nik'] ??
+              customer?['nationalityId'] ??
+              data['nationalityId'] ??
+              data['nik'] ??
+              '')
+          .toString()
+          .trim();
+
+      if (!RegExp(r'^\d{16}$').hasMatch(nik)) {
+        debugPrint('⚠️ [POST-TRX CUSTOMER] NIK tidak valid: $nik');
+        return;
+      }
+
+      // 2. Ekstrak Nama Asli Resmi
+      String nama = (subsidi?['nama'] ??
+              subsidi?['name'] ??
+              customer?['customerName'] ??
+              customer?['name'] ??
+              data['customerName'] ??
+              data['name'] ??
+              '')
+          .toString()
+          .trim();
+
+      // 3. Ekstrak Family ID Encrypted
+      String familyId = (subsidi?['familyIdEncrypted'] ??
+              subsidi?['familyId'] ??
+              customer?['familyIdEncrypted'] ??
+              customer?['familyId'] ??
+              data['familyIdEncrypted'] ??
+              data['familyId'] ??
+              '')
+          .toString()
+          .trim();
+
+      // 4. Ekstrak Kategori
+      String category = (subsidi?['category'] ??
+              subsidi?['categories'] ??
+              customer?['customerType'] ??
+              customer?['category'] ??
+              data['categories'] ??
+              data['customerType'] ??
+              'Rumah Tangga')
+          .toString()
+          .trim();
+      if (category.isEmpty) category = 'Rumah Tangga';
+
+      // 5. Ekstrak Sisa Kuota
+      int quota = 0;
+      final rawQuota = subsidi?['quotaRemaining'] ??
+          customer?['quotaRemaining'] ??
+          data['quotaRemaining'];
+      if (rawQuota is num) {
+        quota = rawQuota.toInt();
+      } else if (rawQuota is Map) {
+        final q = rawQuota['monthly'] ?? rawQuota['family'] ?? 0;
+        quota = (q is num) ? q.toInt() : (int.tryParse('$q') ?? 0);
+      } else if (rawQuota != null) {
+        quota = int.tryParse(rawQuota.toString()) ?? 0;
+      }
+
+      await autoSaveCustomerFromPortalQuota({
+        'nik': nik,
+        'nama': nama,
+        'familyId': familyId,
+        'category': category,
+        'remainingQuota': quota,
+        'isEnriched': 1,
+      });
+
+      debugPrint(
+        '🎉 [POST-TRX CUSTOMER SAVED] NIK: $nik | Nama: $nama | Quota: $quota',
+      );
+    } catch (e, stack) {
+      debugPrint('❌ [POST-TRX CUSTOMER ERROR]: $e\n$stack');
+    }
+  }
+
   Future<void> autoSaveCustomerFromTransactionPayload(
     Map<String, dynamic> txData,
   ) async {

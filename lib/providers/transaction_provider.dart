@@ -288,6 +288,105 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> saveTransactionHistoryFromPayload(
+    Map<String, dynamic> data, [
+    String? registrationIdHint,
+  ]) async {
+    try {
+      final regId = (registrationIdHint != null && registrationIdHint.isNotEmpty)
+          ? registrationIdHint
+          : (authProvider.registrationId.isNotEmpty
+              ? authProvider.registrationId
+              : 'PANGKALAN_DEFAULT');
+
+      final subHeader = (data['subHeader'] is Map)
+          ? Map<String, dynamic>.from(data['subHeader'] as Map)
+          : null;
+      final subsidi = (data['subsidi'] is Map)
+          ? Map<String, dynamic>.from(data['subsidi'] as Map)
+          : null;
+      final customer = (data['customer'] is Map)
+          ? Map<String, dynamic>.from(data['customer'] as Map)
+          : null;
+
+      final trxId = (data['transactionId'] ??
+              data['id'] ??
+              subHeader?['transactionUniqueKey'] ??
+              '')
+          .toString()
+          .trim();
+      final uniqueKey =
+          (subHeader?['transactionUniqueKey'] ?? '').toString().trim();
+      final nik = (subsidi?['nik'] ??
+              customer?['nik'] ??
+              data['nationalityId'] ??
+              data['nik'] ??
+              '')
+          .toString()
+          .trim();
+      final name = (subsidi?['nama'] ??
+              subsidi?['name'] ??
+              customer?['customerName'] ??
+              customer?['name'] ??
+              data['name'] ??
+              data['customerName'] ??
+              '')
+          .toString()
+          .trim();
+      final category = (subsidi?['category'] ??
+              customer?['customerType'] ??
+              data['categories'] ??
+              'Rumah Tangga')
+          .toString()
+          .trim();
+      final date = (subHeader?['date'] ??
+              data['createdAt'] ??
+              DateTime.now().toIso8601String())
+          .toString()
+          .trim();
+
+      int totalQty = 0;
+      if (data['products'] is List) {
+        for (final p in (data['products'] as List)) {
+          if (p is Map) {
+            final q = p['quantity'] ?? p['qty'] ?? p['totalQuantity'] ?? 0;
+            totalQty += (q is num) ? q.toInt() : (int.tryParse('$q') ?? 0);
+          }
+        }
+      }
+      if (totalQty == 0) {
+        final q =
+            data['totalQuantity'] ?? data['quantity'] ?? data['total'] ?? 1;
+        totalQty = (q is num) ? q.toInt() : (int.tryParse('$q') ?? 1);
+      }
+
+      final id = trxId.isNotEmpty
+          ? trxId
+          : (uniqueKey.isNotEmpty ? uniqueKey : '${regId}_${nik}_$date');
+
+      debugPrint(
+        '💾 [POST-TRX SQLITE] Simpan transaksi id=$id | NIK=$nik | Qty=$totalQty',
+      );
+
+      await _database.upsertTransaction({
+        'id': id,
+        'registrationId': regId,
+        'customerReportId': uniqueKey.isNotEmpty ? uniqueKey : trxId,
+        'nationalityId': nik,
+        'name': name.isNotEmpty ? name : 'Pelanggan $nik',
+        'categories': category.isNotEmpty ? category : 'Rumah Tangga',
+        'totalQuantity': totalQty,
+        'createdAt': date,
+      });
+
+      await loadSavedMyPertaminaTransactions(regId);
+      notifyListeners();
+      debugPrint('✅ [POST-TRX SQLITE SUCCESS] Transaksi $id berhasil disimpan!');
+    } catch (e, stack) {
+      debugPrint('❌ [POST-TRX SQLITE ERROR]: $e\n$stack');
+    }
+  }
+
   Future<void> saveCapturedTransactionToLocal(
     String registrationId,
     Map<String, dynamic> txData,

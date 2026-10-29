@@ -292,6 +292,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                         _firebaseMessagingSuppressorScript +
                         _tokenInterceptorScript +
                         _safeCustomerCaptureScript +
+                        _postTransactionInterceptorScript +
                         _transactionBridgeScript,
                     injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
                     forMainFrameOnly: false,
@@ -348,18 +349,17 @@ class _WebViewScreenState extends State<WebViewScreen>
                     callback: (args) async {
                       if (args.isEmpty || args.first is! Map) return;
                       final data = Map<String, dynamic>.from(args.first as Map);
+                      if (!mounted) return;
                       final auth = context.read<AuthProvider>();
-                      await context
-                          .read<CustomerProvider>()
-                          .autoSaveCustomerFromPortal(data);
+                      final custProv = context.read<CustomerProvider>();
+                      final trxProv = context.read<TransactionProvider>();
+                      await custProv.autoSaveCustomerFromPortal(data);
                       final customers = await FirebaseService().getAllPelanggan(
                         auth.registrationId,
                       );
-                      await context
-                          .read<TransactionProvider>()
-                          .syncAndSaveMyPertaminaTransactionsThisYear(
-                            customers,
-                          );
+                      await trxProv.syncAndSaveMyPertaminaTransactionsThisYear(
+                        customers,
+                      );
                       debugPrint(
                         '✅ [AUTO-CAPTURE] Berhasil menyimpan pelanggan & transaksi dari portal!',
                       );
@@ -377,11 +377,37 @@ class _WebViewScreenState extends State<WebViewScreen>
                       try {
                         final data = Map<String, dynamic>.from(args.first as Map);
                         debugPrint('📥 [FLUTTER HANDLER DATA] Parsed: $data');
+                        if (!mounted) return {'status': 'UNMOUNTED'};
                         await context.read<CustomerProvider>().autoSaveCustomerFromPortalQuota(data);
                         return {'status': 'SUCCESS'};
                       } catch (e, st) {
                         debugPrint('❌ [FLUTTER HANDLER ERROR]: $e\n$st');
                         return {'status': 'ERROR', 'message': e.toString()};
+                      }
+                    },
+                  );
+                  controller.addJavaScriptHandler(
+                    handlerName: 'onMyPertaminaTransactionCompleted',
+                    callback: (args) async {
+                      if (args.isEmpty || args.first == null) return;
+                      try {
+                        final rawData =
+                            Map<String, dynamic>.from(args.first as Map);
+                        debugPrint(
+                          '📥 [FLUTTER COMPLETED TRX PAYLOAD]: $rawData',
+                        );
+
+                        if (!mounted) return;
+                        final custProv = context.read<CustomerProvider>();
+                        final trxProv = context.read<TransactionProvider>();
+
+                        // 1. Simpan/Update Profil Pelanggan di SQLite
+                        await custProv.saveEnrichedCustomerFromTransaction(rawData);
+
+                        // 2. Simpan Catatan Riwayat Transaksi Baru di SQLite
+                        await trxProv.saveTransactionHistoryFromPayload(rawData);
+                      } catch (e, st) {
+                        debugPrint('❌ [FLUTTER SAVE EXCEPTION]: $e\n$st');
                       }
                     },
                   );
@@ -399,12 +425,13 @@ class _WebViewScreenState extends State<WebViewScreen>
                             : args.first;
                         if (decoded is! Map) return;
                         final txData = Map<String, dynamic>.from(decoded);
+                        if (!mounted) return;
                         final auth = context.read<AuthProvider>();
+                        final trxProv = context.read<TransactionProvider>();
+                        final custProv = context.read<CustomerProvider>();
                         final registrationId = auth.registrationId.isEmpty ? 'PANGKALAN_DEFAULT' : auth.registrationId;
-                        await context.read<TransactionProvider>()
-                            .saveCapturedTransactionToLocal(registrationId, txData);
-                        await context.read<CustomerProvider>()
-                            .autoSaveCustomerFromTransactionPayload(txData);
+                        await trxProv.saveCapturedTransactionToLocal(registrationId, txData);
+                        await custProv.autoSaveCustomerFromTransactionPayload(txData);
                         debugPrint('✅ [SQLITE SUCCESS] Transaksi & pelanggan tersimpan lokal.');
                       } catch (e, stackTrace) {
                         debugPrint('❌ [AUTO-CAPTURE] $e\n$stackTrace');
@@ -424,6 +451,9 @@ class _WebViewScreenState extends State<WebViewScreen>
                   );
                 },
                 onLoadStop: (controller, url) async {
+                  await controller.evaluateJavascript(
+                    source: _postTransactionInterceptorScript,
+                  );
                   await controller.evaluateJavascript(
                     source: _transactionBridgeScript,
                   );
@@ -702,6 +732,52 @@ class _WebViewScreenState extends State<WebViewScreen>
         }
       } catch(eErr) {
         console.log("❌ [JS INTERCEPT ERR]:", String(eErr));
+      }
+      return jsonData;
+    });
+  };
+})();
+''';
+
+  static const String _postTransactionInterceptorScript = r'''
+(function() {
+  console.log("🔔 [POST-TRANSACTION INTERCEPTOR] Listening for Completed Transactions!");
+
+  function sendCompletedTransactionToFlutter(payload) {
+    console.log("🚀 [TRANSACTION SUCCESS INTERCEPTED]:", JSON.stringify(payload));
+    if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
+      window.flutter_inappwebview.callHandler('onMyPertaminaTransactionCompleted', payload)
+        .then(function() {
+          console.log("✅ [FLUTTER SAVE SUCCESS] Data Pelanggan & Riwayat tersimpan!");
+        })
+        .catch(function(e) {
+          console.log("❌ [FLUTTER SAVE ERR]:", String(e));
+        });
+    } else {
+      setTimeout(function() { sendCompletedTransactionToFlutter(payload); }, 500);
+    }
+  }
+
+  var origJson = Response.prototype.json;
+  Response.prototype.json = function() {
+    var self = this;
+    var urlStr = self.url || "";
+    return origJson.apply(this, arguments).then(function(jsonData) {
+      try {
+        if (!urlStr || typeof urlStr !== 'string') return jsonData;
+
+        // Tangkap Respon Submit Transaksi / Detail Struk
+        if (
+          (urlStr.indexOf('/general/v3/transactions') !== -1 || 
+           urlStr.indexOf('/general/v1/transactions/') !== -1 ||
+           urlStr.indexOf('/sale/struk') !== -1) &&
+          jsonData && jsonData.success === true && jsonData.data
+        ) {
+          console.log("🎯 [TRANSACTION SUCCESS JSON DETECTED] URL:", urlStr);
+          sendCompletedTransactionToFlutter(jsonData.data);
+        }
+      } catch(eErr) {
+        console.log("❌ [INTERCEPT ERROR]:", String(eErr));
       }
       return jsonData;
     });
