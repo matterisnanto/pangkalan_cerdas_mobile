@@ -459,25 +459,28 @@ class _WebViewScreenState extends State<WebViewScreen>
                   return null;
                 },
                 onLoadResource: (controller, resource) async {
-                  final resourceUrl = resource.url?.toString() ?? '';
-                  if (resourceUrl.contains('/customers/') ||
-                      resourceUrl.contains('/verify-nik') ||
-                      resourceUrl.contains('/quota')) {
-                    final match = RegExp(r'\b\d{16}\b').firstMatch(resourceUrl);
+                  final urlStr = resource.url?.toString() ?? '';
+                  if (urlStr.contains('/customers/') ||
+                      urlStr.contains('/verify-nik') ||
+                      urlStr.contains('/quota')) {
+                    final match = RegExp(r'\b\d{16}\b').firstMatch(urlStr);
                     if (match != null) {
                       final nik = match.group(0)!;
-                      var familyId = '';
+                      String familyId = '';
                       try {
-                        familyId = Uri.parse(resourceUrl).queryParameters['familyId'] ?? '';
+                        final uri = Uri.parse(urlStr);
+                        familyId = uri.queryParameters['familyId'] ?? '';
                       } catch (_) {}
-                      debugPrint('📡 [NATIVE CAPTURE] NIK $nik | FamID: $familyId');
-                      await context.read<CustomerProvider>().autoSaveCustomerFromPortalQuota({
-                        'nik': nik,
-                        'familyId': familyId,
-                        'category': 'Rumah Tangga',
-                        'isNativeFallback': true,
-                        'isEnriched': 1,
-                      });
+
+                      debugPrint('📡 [NATIVE CAPTURE] NIK $nik | FamID: $familyId -> Triggers Direct Dart API Fetch');
+
+                      final token = context.read<AuthProvider>().token;
+                      // Panggil Direct API Request dari Flutter Dart
+                      context.read<CustomerProvider>().fetchAndEnrichCustomerDirectly(
+                        nik,
+                        familyIdHint: familyId.isNotEmpty ? familyId : null,
+                        authToken: token,
+                      );
                     }
                   }
                 },
@@ -613,71 +616,88 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   static const String _safeCustomerCaptureScript = r'''
 (function() {
-  console.log("🔔 [SINGLE INTERCEPTOR] Clean Interceptor Active!");
-  var cache = {};
+  console.log("🔔 [SINGLE INTERCEPTOR v8.0] Bulletproof Interceptor Active!");
+  var customerCache = {};
 
   function sendToFlutter(tag, payload) {
-    console.log("🚀 [JS STEP 4] (" + tag + ") Sending:", JSON.stringify(payload));
-    if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
-      window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload)
-        .then(function() {
-          console.log("✅ [JS STEP 5 SUCCESS] Flutter Received Payload!");
-        })
-        .catch(function(e) {
-          console.log("❌ [JS STEP 5 ERR]:", String(e));
-        });
+    try {
+      console.log("🚀 [JS STEP 4] (" + tag + ") Sending Payload:", JSON.stringify(payload));
+      if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
+        window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload)
+          .then(function() {
+            console.log("✅ [JS STEP 5 SUCCESS] Flutter Received Payload!");
+          })
+          .catch(function(e) {
+            console.log("❌ [JS STEP 5 ERR]:", String(e));
+          });
+      }
+    } catch(e) {
+      console.log("❌ [JS STEP 4 EXCEPTION]:", String(e));
     }
   }
 
+  function processCustomerJson(urlStr, jsonData) {
+    if (!jsonData || typeof jsonData !== 'object') return;
+    var matchNik = urlStr.match(/\b\d{16}\b/);
+    var nik = matchNik ? String(matchNik) : "";
+
+    if (nik && nik.length === 16) {
+      var item = customerCache[nik] || {
+        "nik": nik,
+        "nama": "",
+        "familyId": "",
+        "category": "Rumah Tangga",
+        "remainingQuota": 0,
+        "isEnriched": 1
+      };
+
+      // 1. Tangkap API Verify NIK (Nama Asli & Family ID)
+      if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
+        if (jsonData.data) {
+          if (jsonData.data.name) item.nama = String(jsonData.data.name).trim();
+          if (jsonData.data.familyIdEncrypted) item.familyId = String(jsonData.data.familyIdEncrypted).trim();
+        }
+        customerCache[nik] = item;
+        console.log("🎯 [JS STEP 3 VERIFY] Nama Asli Ditangkap:", item.nama);
+        sendToFlutter("VERIFY_NIK_SUCCESS", item);
+      }
+
+      // 2. Tangkap API Quota (Sisa Kuota)
+      if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
+        var famMatch = urlStr.match(/[?&]familyId=([^&]+)/);
+        if (famMatch) {
+          try { item.familyId = decodeURIComponent(famMatch[1]); } catch(e){}
+        }
+        if (jsonData.data && jsonData.data.quotaRemaining) {
+          var qr = jsonData.data.quotaRemaining;
+          var q = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
+          item.remainingQuota = Number(q) || 0;
+        }
+        customerCache[nik] = item;
+        console.log("🎯 [JS STEP 3 QUOTA] Kuota Ditangkap:", item.remainingQuota);
+        sendToFlutter("QUOTA_SUCCESS", item);
+      }
+    }
+  }
+
+  // SAFE OVERRIDE RESPONSE.PROTOTYPE.JSON (AMAT TAHAN CRASH)
   var origJson = Response.prototype.json;
   Response.prototype.json = function() {
     var self = this;
-    var url = self.url || "";
+    var urlStr = self.url || "";
     return origJson.apply(this, arguments).then(function(data) {
       try {
-        if (url && (url.indexOf('/verify-nik') !== -1 || url.indexOf('/quota') !== -1 || url.indexOf('nationalityId=') !== -1)) {
-          var m = url.match(/\b\d{16}\b/);
-          var nik = m ? String(m) : "";
-
-          if (nik && nik.length === 16 && data && data.data) {
-            var item = cache[nik] || {
-              "nik": nik,
-              "nama": "",
-              "familyId": "",
-              "category": "Rumah Tangga",
-              "remainingQuota": 0,
-              "isEnriched": 1
-            };
-
-            // 1. Tangkap Verify NIK (Nama Asli & Family ID)
-            if (url.indexOf('/verify-nik') !== -1 || url.indexOf('nationalityId=') !== -1) {
-              if (data.data.name) item.nama = String(data.data.name).trim();
-              if (data.data.familyIdEncrypted) item.familyId = String(data.data.familyIdEncrypted).trim();
-              cache[nik] = item;
-              console.log("🎯 [JS STEP 3 VERIFY] Name Captured:", item.nama);
-              sendToFlutter("VERIFY_NIK", item);
-            }
-
-            // 2. Tangkap Quota
-            if (url.indexOf('/customers/') !== -1 && url.indexOf('/quota') !== -1) {
-              var famM = url.match(/[?&]familyId=([^&]+)/);
-              if (famM) {
-                try { item.familyId = decodeURIComponent(famM[1]); } catch(e){}
-              }
-              if (data.data.quotaRemaining) {
-                var qr = data.data.quotaRemaining;
-                item.remainingQuota = Number((typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0)) || 0;
-              }
-              cache[nik] = item;
-              console.log("🎯 [JS STEP 3 QUOTA] Quota Captured:", item.remainingQuota);
-              sendToFlutter("QUOTA", item);
-            }
-          }
+        if (urlStr && (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('/quota') !== -1 || urlStr.indexOf('/customers/') !== -1 || urlStr.indexOf('nationalityId=') !== -1)) {
+          console.log("🔍 [JS STEP 2 INTERCEPT] URL:", urlStr);
+          processCustomerJson(urlStr, data);
         }
-      } catch(e) {
-        console.log("❌ [JS INTERCEPT EXCEPTION]:", String(e));
+      } catch(eErr) {
+        console.log("❌ [JS INTERCEPT SAFE CATCH]:", String(eErr));
       }
       return data;
+    }).catch(function(err) {
+      // Jangan biarkan error parsing mematikan chain
+      return Promise.reject(err);
     });
   };
 })();
@@ -773,13 +793,13 @@ class _WebViewScreenState extends State<WebViewScreen>
   }
 
   void _extractToken(Map<String, String>? headers) {
-    if (headers == null || _tokenCaptured) return;
+    if (!mounted || headers == null) return;
 
     for (final entry in headers.entries) {
       if (entry.key.toLowerCase() == 'authorization' &&
           entry.value.startsWith('Bearer ')) {
         final token = entry.value.substring(7).trim();
-        if (token.isNotEmpty) {
+        if (token.isNotEmpty && token != context.read<AuthProvider>().token) {
           _handleTokenCaptured(token);
           break;
         }

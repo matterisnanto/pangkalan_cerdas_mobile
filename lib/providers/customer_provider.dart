@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/widgets.dart';
+import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 
 import '../models/pelanggan_model.dart';
@@ -38,6 +40,105 @@ class CustomerProvider extends ChangeNotifier {
       if (hasListeners) notifyListeners();
     });
   }
+
+  Future<void> fetchAndEnrichCustomerDirectly(
+    String nik, {
+    String? familyIdHint,
+    String? authToken,
+  }) async {
+    if (nik.length != 16) return;
+
+    try {
+      debugPrint('🚀 [DART DIRECT API] Memulai Direct Fetch untuk NIK $nik...');
+
+      String finalNama = '';
+      String finalFamilyId = familyIdHint ?? '';
+      int finalQuota = 0;
+
+      final token = (authToken != null && authToken.isNotEmpty)
+          ? authToken
+          : _authProvider.token;
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'User-Agent':
+            'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36',
+        if (token != null && token.isNotEmpty)
+          'Authorization':
+              token.startsWith('Bearer ') ? token : 'Bearer $token',
+      };
+
+      // 1. CALL API VERIFY-NIK (AMBIL NAMA ASLI & FAMILY ID ENCRYPTED)
+      try {
+        final verifyUrl = Uri.parse(
+          'https://api-map.my-pertamina.id/general/customer-service/v1/verify-nik?nationalityId=$nik',
+        );
+        final verifyRes = await http
+            .get(verifyUrl, headers: headers)
+            .timeout(const Duration(seconds: 5));
+
+        if (verifyRes.statusCode == 200) {
+          final vData = jsonDecode(verifyRes.body);
+          if (vData['success'] == true && vData['data'] != null) {
+            final realName = vData['data']['name']?.toString() ?? '';
+            final famIdEnc =
+                vData['data']['familyIdEncrypted']?.toString() ?? '';
+
+            if (realName.isNotEmpty) finalNama = realName.trim();
+            if (famIdEnc.isNotEmpty) finalFamilyId = famIdEnc.trim();
+
+            debugPrint(
+              '🎯 [DART API VERIFY SUCCESS] Nama: $finalNama | FamID: $finalFamilyId',
+            );
+          }
+        }
+      } catch (eVerify) {
+        debugPrint('⚠️ [DART API VERIFY WARN]: $eVerify');
+      }
+
+      // 2. CALL API QUOTA (AMBIL SISA KUOTA BULANAN / KELUARGA)
+      if (finalFamilyId.isNotEmpty) {
+        try {
+          final quotaUrl = Uri.parse(
+            'https://api-map.my-pertamina.id/general/v5/customers/$nik/quota?familyId=${Uri.encodeComponent(finalFamilyId)}&customerType=Rumah+Tangga',
+          );
+          final quotaRes = await http
+              .get(quotaUrl, headers: headers)
+              .timeout(const Duration(seconds: 5));
+
+          if (quotaRes.statusCode == 200) {
+            final qData = jsonDecode(quotaRes.body);
+            if (qData['success'] == true &&
+                qData['data'] != null &&
+                qData['data']['quotaRemaining'] != null) {
+              final qr = qData['data']['quotaRemaining'];
+              final q = (qr['monthly'] != null)
+                  ? qr['monthly']
+                  : (qr['family'] ?? 0);
+              finalQuota = (q as num).toInt();
+
+              debugPrint('🎯 [DART API QUOTA SUCCESS] Kuota: $finalQuota');
+            }
+          }
+        } catch (eQuota) {
+          debugPrint('⚠️ [DART API QUOTA WARN]: $eQuota');
+        }
+      }
+
+      // 3. SIMPAN KE SQLITE SMART UPSERT
+      await autoSaveCustomerFromPortalQuota({
+        'nik': nik,
+        'nama': finalNama,
+        'familyId': finalFamilyId,
+        'remainingQuota': finalQuota,
+        'category': 'Rumah Tangga',
+        'isEnriched': 1,
+      });
+    } catch (e, stack) {
+      debugPrint('❌ [DART DIRECT API ERROR]: $e\n$stack');
+    }
+  }
+
 
   Future<void> autoSaveCustomerFromPortalQuota(Map<String, dynamic> data) async {
     try {
