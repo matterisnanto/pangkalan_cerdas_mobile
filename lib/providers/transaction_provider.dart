@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:developer' as developer;
 import '../models/pelanggan_model.dart';
+import '../services/firebase_service.dart';
 import '../services/mypertamina_api_service.dart';
 import '../services/local_database_service.dart';
 import 'auth_provider.dart';
@@ -323,6 +324,25 @@ class TransactionProvider extends ChangeNotifier {
         .toList();
     notifyListeners();
   }
+  /// Fungsi ringan yang hanya membaca riwayat transaksi dari SQLite lokal dan memperbarui UI.
+  Future<void> loadLocalTransactions([String? registrationId]) async {
+    final regId = registrationId ?? authProvider.registrationId;
+    await loadSavedMyPertaminaTransactions(regId);
+  }
+
+  /// Fungsi sinkronisasi manual yang memanggil API MyPertamina, menggabungkan data ke SQLite, lalu memuat ulang UI.
+  Future<int> refreshFromMyPertamina([List<Pelanggan>? localCustomers]) async {
+    List<Pelanggan> customers = localCustomers ?? [];
+    if (customers.isEmpty && authProvider.registrationId.isNotEmpty) {
+      try {
+        customers = await FirebaseService().getAllPelanggan(authProvider.registrationId);
+      } catch (e) {
+        debugPrint('⚠️ [TRANSACTION PROVIDER] Gagal mengambil pelanggan: $e');
+      }
+    }
+    return await syncAndSaveMyPertaminaTransactionsThisYear(customers);
+  }
+
 
   static bool _nikMatches(String nik, String masked) {
     final clean = nik.replaceAll(RegExp(r'\D'), '');

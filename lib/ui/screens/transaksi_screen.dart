@@ -49,34 +49,64 @@ class _TransaksiScreenState extends State<TransaksiScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadQueue();
       _loadLogs();
-      _loadSavedTransactionsIfReady();
+      _loadLocalTransactions();
     });
   }
 
   void _onTabChanged() {
-    if (_tabController.index != 2 || _tabController.indexIsChanging) return;
-    _loadSavedTransactionsIfReady(force: true);
+    if (_tabController.indexIsChanging) return;
+    if (_tabController.index == 2) {
+      _loadLocalTransactions();
+    }
   }
 
-  void _loadSavedTransactionsIfReady({bool force = false}) {
+  void _loadLocalTransactions() {
     final registrationId = context.read<AuthProvider>().registrationId.trim();
-    if (registrationId.isEmpty ||
-        (!force && registrationId == _loadedRegistrationId))
+    if (registrationId.isEmpty || registrationId == _loadedRegistrationId) {
       return;
+    }
     _loadedRegistrationId = registrationId;
-    final provider = context.read<TransactionProvider>();
-    provider.loadSavedMyPertaminaTransactions(registrationId);
-    if (force) {
-      Future<void>(() async {
-        try {
-          final customers = await FirebaseService().getAllPelanggan(
-            registrationId,
-          );
-          await provider.syncAndSaveMyPertaminaTransactionsThisYear(customers);
-        } catch (e) {
-          debugPrint('⚠️ [MYPTM REFRESH] $e');
-        }
-      });
+    context.read<TransactionProvider>().loadLocalTransactions(registrationId);
+  }
+
+  Future<void> _manualRefreshMyPertamina() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.token == null || auth.token!.isEmpty) {
+      _showTopNotification(
+        'Silakan login ke Portal MyPertamina terlebih dahulu di Halaman Portal!',
+        isError: true,
+      );
+      return;
+    }
+    debugPrint('▶️ [MYPTM UI] Manual Refresh / Tarik data MyPertamina dimulai');
+    try {
+      final customers = await _firebase.getAllPelanggan(auth.registrationId);
+      if (!mounted) return;
+      final count = await context
+          .read<TransactionProvider>()
+          .refreshFromMyPertamina(customers);
+      if (!mounted) return;
+      _showTopNotification(
+        'Berhasil menarik $count data transaksi MyPertamina tahun ini!',
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final message = switch (e.response?.statusCode) {
+        401 || 403 =>
+          'Sesi login MyPertamina habis. Silakan login ulang di Halaman Portal.',
+        406 =>
+          'Server menolak permintaan (Rentang tanggal/Header). Mencoba penarikan ulang per bulan...',
+        _ => ApiClient.parseDioError(e),
+      };
+      _showTopNotification(message, isError: true);
+    } catch (e, stackTrace) {
+      debugPrint('❌ [MYPTM UI ERROR]: $e');
+      debugPrint('📌 [MYPTM UI STACKTRACE]: $stackTrace');
+      if (!mounted) return;
+      _showTopNotification(
+        'Gagal mendapatkan transaksi: ${e.toString()}',
+        isError: true,
+      );
     }
   }
 
@@ -84,7 +114,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _loadSavedTransactionsIfReady();
+      if (mounted) _loadLocalTransactions();
     });
   }
 
@@ -297,7 +327,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
     return Consumer2<AuthProvider, TransactionQueueProvider>(
       builder: (context, auth, txQueue, _) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _loadSavedTransactionsIfReady();
+          if (mounted) _loadLocalTransactions();
         });
         return Scaffold(
           appBar: GlassAppBar(
@@ -307,8 +337,12 @@ class _TransaksiScreenState extends State<TransaksiScreen>
                 icon: const Icon(Icons.refresh),
                 tooltip: 'Muat Ulang',
                 onPressed: () {
-                  _loadQueue();
-                  _loadLogs();
+                  if (_tabController.index == 2) {
+                    _manualRefreshMyPertamina();
+                  } else {
+                    _loadQueue();
+                    _loadLogs();
+                  }
                 },
               ),
             ],
@@ -882,51 +916,7 @@ class _TransaksiScreenState extends State<TransaksiScreen>
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: FilledButton.icon(
-            onPressed: provider.isLoading
-                ? null
-                : () async {
-                    final auth = context.read<AuthProvider>();
-                    if (auth.token == null || auth.token!.isEmpty) {
-                      _showTopNotification(
-                        'Silakan login ke Portal MyPertamina terlebih dahulu di Halaman Portal!',
-                        isError: true,
-                      );
-                      return;
-                    }
-                    debugPrint('▶️ [MYPTM UI] Tombol tarik transaksi ditekan');
-                    try {
-                      final customers = await _firebase.getAllPelanggan(
-                        auth.registrationId,
-                      );
-                      if (!mounted) return;
-                      final count = await provider
-                          .syncAndSaveMyPertaminaTransactionsThisYear(
-                            customers,
-                          );
-                      if (!mounted) return;
-                      _showTopNotification(
-                        'Berhasil menarik $count data transaksi MyPertamina tahun ini!',
-                      );
-                    } on DioException catch (e) {
-                      if (!mounted) return;
-                      final message = switch (e.response?.statusCode) {
-                        401 || 403 =>
-                          'Sesi login MyPertamina habis. Silakan login ulang di Halaman Portal.',
-                        406 =>
-                          'Server menolak permintaan (Rentang tanggal/Header). Mencoba penarikan ulang per bulan...',
-                        _ => ApiClient.parseDioError(e),
-                      };
-                      _showTopNotification(message, isError: true);
-                    } catch (e, stackTrace) {
-                      debugPrint('❌ [MYPTM UI ERROR]: $e');
-                      debugPrint('📌 [MYPTM UI STACKTRACE]: $stackTrace');
-                      if (!mounted) return;
-                      _showTopNotification(
-                        'Gagal mendapatkan transaksi: ${e.toString()}',
-                        isError: true,
-                      );
-                    }
-                  },
+            onPressed: provider.isLoading ? null : _manualRefreshMyPertamina,
             icon: const Icon(Icons.sync),
             label: const Text('Refresh / Tarik Data MyPertamina Terbaru'),
           ),
@@ -966,11 +956,31 @@ class _TransaksiScreenState extends State<TransaksiScreen>
             ],
           ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
-            itemCount: items.length,
-            itemBuilder: (context, index) =>
-                _buildMyPertaminaCard(context, items[index]),
+          child: RefreshIndicator(
+            onRefresh: _manualRefreshMyPertamina,
+            child: items.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      const SizedBox(height: 80),
+                      Center(
+                        child: Text(
+                          'Belum ada transaksi lokal tersimpan.\nUsap ke bawah atau tekan Refresh untuk menarik dari MyPertamina.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) =>
+                        _buildMyPertaminaCard(context, items[index]),
+                  ),
           ),
         ),
       ],
