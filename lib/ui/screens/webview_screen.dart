@@ -621,88 +621,89 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   static const String _safeCustomerCaptureScript = r'''
 (function() {
-  console.log("🔔 [SINGLE INTERCEPTOR v8.0] Bulletproof Interceptor Active!");
+  console.log("🔔 [QUEUED INTERCEPTOR v10.0] Passive Queue Interceptor Active!");
+  window.__customerQueue = window.__customerQueue || [];
   var customerCache = {};
 
-  function sendToFlutter(tag, payload) {
-    try {
-      console.log("🚀 [JS STEP 4] (" + tag + ") Sending Payload:", JSON.stringify(payload));
-      if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
-        window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', payload)
+  function flushQueue() {
+    if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
+      while (window.__customerQueue.length > 0) {
+        var item = window.__customerQueue.shift();
+        console.log("🚀 [JS QUEUE FLUSH] Dispatching to Flutter:", JSON.stringify(item));
+        window.flutter_inappwebview.callHandler('onMyPertaminaCustomerCaptured', item)
           .then(function() {
-            console.log("✅ [JS STEP 5 SUCCESS] Flutter Received Payload!");
+            console.log("✅ [JS FLUSH SUCCESS] Data tersimpan di SQLite!");
           })
           .catch(function(e) {
-            console.log("❌ [JS STEP 5 ERR]:", String(e));
+            console.log("❌ [JS FLUSH ERR]:", String(e));
           });
       }
-    } catch(e) {
-      console.log("❌ [JS STEP 4 EXCEPTION]:", String(e));
     }
   }
 
-  function processCustomerJson(urlStr, jsonData) {
-    if (!jsonData || typeof jsonData !== 'object') return;
-    var matchNik = urlStr.match(/\b\d{16}\b/);
-    var nik = matchNik ? String(matchNik) : "";
+  window.addEventListener("flutterInAppWebViewPlatformReady", function() {
+    console.log("⚡ [BRIDGE READY] flutterInAppWebViewPlatformReady fired!");
+    flushQueue();
+  });
 
-    if (nik && nik.length === 16) {
-      var item = customerCache[nik] || {
-        "nik": nik,
-        "nama": "",
-        "familyId": "",
-        "category": "Rumah Tangga",
-        "remainingQuota": 0,
-        "isEnriched": 1
-      };
+  setInterval(flushQueue, 500);
 
-      // 1. Tangkap API Verify NIK (Nama Asli & Family ID)
-      if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
-        if (jsonData.data) {
-          if (jsonData.data.name) item.nama = String(jsonData.data.name).trim();
-          if (jsonData.data.familyIdEncrypted) item.familyId = String(jsonData.data.familyIdEncrypted).trim();
-        }
-        customerCache[nik] = item;
-        console.log("🎯 [JS STEP 3 VERIFY] Nama Asli Ditangkap:", item.nama);
-        sendToFlutter("VERIFY_NIK_SUCCESS", item);
-      }
-
-      // 2. Tangkap API Quota (Sisa Kuota)
-      if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
-        var famMatch = urlStr.match(/[?&]familyId=([^&]+)/);
-        if (famMatch) {
-          try { item.familyId = decodeURIComponent(famMatch[1]); } catch(e){}
-        }
-        if (jsonData.data && jsonData.data.quotaRemaining) {
-          var qr = jsonData.data.quotaRemaining;
-          var q = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
-          item.remainingQuota = Number(q) || 0;
-        }
-        customerCache[nik] = item;
-        console.log("🎯 [JS STEP 3 QUOTA] Kuota Ditangkap:", item.remainingQuota);
-        sendToFlutter("QUOTA_SUCCESS", item);
-      }
-    }
+  function queuePayload(tag, payload) {
+    console.log("📥 [JS QUEUED] (" + tag + "):", JSON.stringify(payload));
+    window.__customerQueue.push(payload);
+    flushQueue();
   }
 
-  // SAFE OVERRIDE RESPONSE.PROTOTYPE.JSON (AMAT TAHAN CRASH)
   var origJson = Response.prototype.json;
   Response.prototype.json = function() {
     var self = this;
     var urlStr = self.url || "";
-    return origJson.apply(this, arguments).then(function(data) {
+    return origJson.apply(this, arguments).then(function(jsonData) {
       try {
         if (urlStr && (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('/quota') !== -1 || urlStr.indexOf('/customers/') !== -1 || urlStr.indexOf('nationalityId=') !== -1)) {
-          console.log("🔍 [JS STEP 2 INTERCEPT] URL:", urlStr);
-          processCustomerJson(urlStr, data);
+          var matchNik = urlStr.match(/\b\d{16}\b/);
+          var nik = matchNik ? String(matchNik) : "";
+
+          if (nik && nik.length === 16 && jsonData && jsonData.data) {
+            var existing = customerCache[nik] || {
+              "nik": nik,
+              "nama": "",
+              "familyId": "",
+              "category": "Rumah Tangga",
+              "remainingQuota": 0,
+              "isEnriched": 1
+            };
+
+            // A. TANGKAP API VERIFY-NIK (AMBIL NAMA ASLI)
+            if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
+              if (jsonData.data.name) existing.nama = String(jsonData.data.name).trim();
+              if (jsonData.data.familyIdEncrypted) existing.familyId = String(jsonData.data.familyIdEncrypted).trim();
+              customerCache[nik] = existing;
+              console.log("🎯 [JS STEP 3 VERIFY] Nama Asli Ditangkap:", existing.nama);
+              queuePayload("VERIFY_NIK_QUEUE", existing);
+            }
+
+            // B. TANGKAP API QUOTA (AMBIL SISA KUOTA)
+            if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
+              var famMatch = urlStr.match(/[?&]familyId=([^&]+)/);
+              if (famMatch) {
+                try { existing.familyId = decodeURIComponent(famMatch[1]); } catch(e){}
+              }
+              if (jsonData.data.quotaRemaining) {
+                var qr = jsonData.data.quotaRemaining;
+                var q = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
+                existing.remainingQuota = Number(q) || 0;
+              }
+              customerCache[nik] = existing;
+              console.log("🎯 [JS STEP 3 QUOTA] Kuota Ditangkap:", existing.remainingQuota);
+              queuePayload("QUOTA_QUEUE", existing);
+            }
+          }
         }
       } catch(eErr) {
-        console.log("❌ [JS INTERCEPT SAFE CATCH]:", String(eErr));
+        console.log("❌ [JS INTERCEPT ERR]:", String(eErr));
       }
-      return data;
-    }).catch(function(err) {
-      // Jangan biarkan error parsing mematikan chain
-      return Promise.reject(err);
+      return jsonData;
     });
   };
 })();
