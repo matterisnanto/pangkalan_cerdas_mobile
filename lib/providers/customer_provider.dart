@@ -26,6 +26,12 @@ class CustomerProvider extends ChangeNotifier {
 
   bool get isSyncing => _isSyncing;
 
+  Future<Database> get database => LocalDatabaseService.instance.database;
+
+  Future<void> loadCustomers() async {
+    notifyListeners();
+  }
+
   void safeNotifyListeners() {
     if (!hasListeners) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -35,12 +41,10 @@ class CustomerProvider extends ChangeNotifier {
 
   Future<void> autoSaveCustomerFromPortalQuota(Map<String, dynamic> data) async {
     try {
-      debugPrint('📥 [PROVIDER INCOMING] autoSaveCustomerFromPortalQuota data: $data');
       final nik = data['nik']?.toString().trim() ?? '';
       if (nik.length != 16) return;
 
-      final db = await LocalDatabaseService.instance.database;
-
+      final db = await database;
       final existingRows = await db.query(
         'customers',
         where: 'nik = ?',
@@ -59,30 +63,23 @@ class CustomerProvider extends ChangeNotifier {
         currentFamilyId = old['familyId']?.toString() ?? '';
         currentQuota = (old['remainingQuota'] as num?)?.toInt() ?? 0;
         currentCategory = old['category']?.toString() ?? 'Rumah Tangga';
-        debugPrint('📋 [EXISTING DATA] NIK $nik | Nama: $currentNama | FamID: $currentFamilyId | Kuota: $currentQuota');
-      } else {
-        debugPrint('📋 [EXISTING DATA] NIK $nik BELUM ADA di SQLite');
       }
 
-      // 1. Evaluasi Nama Asli
+      // Jika incomingNama membawa Nama Asli resmi, WAJIB menimpa 'Pelanggan {NIK}'
       final incomingNama = data['nama']?.toString() ?? data['name']?.toString() ?? '';
-      debugPrint('🔍 [NAMA EVAL] incoming: "$incomingNama" | current: "$currentNama"');
       if (incomingNama.isNotEmpty && !incomingNama.startsWith('Pelanggan ')) {
         currentNama = incomingNama.trim();
       } else if (currentNama.isEmpty) {
         currentNama = incomingNama.isNotEmpty ? incomingNama.trim() : 'Pelanggan $nik';
       }
 
-      // 2. Evaluasi Family ID
       final incomingFamId = data['familyId']?.toString() ?? '';
       if (incomingFamId.isNotEmpty) {
         currentFamilyId = incomingFamId.trim();
       }
 
-      // 3. Evaluasi Sisa Kuota
       if (data.containsKey('remainingQuota') && data['remainingQuota'] != null) {
         final incomingQuota = (data['remainingQuota'] as num).toInt();
-        debugPrint('🔍 [KUOTA EVAL] incoming: $incomingQuota | current: $currentQuota');
         if (incomingQuota > 0 || currentQuota == 0) {
           currentQuota = incomingQuota;
         }
@@ -103,12 +100,9 @@ class CustomerProvider extends ChangeNotifier {
       };
 
       debugPrint('💾 [SQLITE SAVING DATA]: $customerMap');
-      await db.insert(
-        'customers',
-        customerMap,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      await db.insert('customers', customerMap, conflictAlgorithm: ConflictAlgorithm.replace);
 
+      await loadCustomers();
       notifyListeners();
       debugPrint('✅ [SQLITE SUCCESS] NIK $nik | Nama: $currentNama | FamID: $currentFamilyId | Kuota: $currentQuota');
     } catch (e, stack) {
