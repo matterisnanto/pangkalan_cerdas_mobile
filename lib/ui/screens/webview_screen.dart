@@ -622,10 +622,8 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   static const String _passiveEventInterceptorScript = r'''
 (function() {
-  if (window.__pcPassiveDualInterceptorInstalled) return;
-  window.__pcPassiveDualInterceptorInstalled = true;
-  console.log("🔔 [PASSIVE DUAL INTERCEPTOR v12.0] Active (Fetch + XHR)!");
-  var customerMemory = {};
+  console.log("⚡ [FAST INTERCEPTOR v13.0] Lightweight & Unmasked Active!");
+  var activeCustomer = { nik: "", nama: "", familyId: "", remainingQuota: 0 };
 
   function dispatchToFlutter(handlerName, payload) {
     if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
@@ -641,166 +639,85 @@ class _WebViewScreenState extends State<WebViewScreen>
     }
   }
 
-  function handleInterceptedJson(urlStr, jsonData) {
-    try {
-      if (!urlStr || typeof urlStr !== 'string' || !jsonData) return;
-
-      var lastRealNik = "";
-
-      // 1. SADAP /VERIFY-NIK (TANGKAP NAMA ASLI & FAMILY ID)
-      if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
-        var m1 = urlStr.match(/\b\d{16}\b/);
-        var nik1 = m1 ? String(m1) : "";
-        if (nik1 && nik1.length === 16) {
-          lastRealNik = nik1;
-          var cache1 = customerMemory[nik1] || {
-            "nik": nik1,
-            "nama": "",
-            "familyId": "",
-            "category": "Rumah Tangga",
-            "remainingQuota": 0,
-            "isEnriched": 1
-          };
-          if (jsonData && jsonData.data) {
-            if (jsonData.data.name) cache1.nama = String(jsonData.data.name).trim();
-            if (jsonData.data.familyIdEncrypted) cache1.familyId = String(jsonData.data.familyIdEncrypted).trim();
-          }
-          customerMemory[nik1] = cache1;
-          console.log("🎯 [EVENT 1: VERIFY-NIK] Captured Real NIK:", lastRealNik, "| Name:", cache1.nama);
-        }
-      }
-
-      // 2. SADAP /QUOTA (CEK SISA KUOTA)
-      if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
-        var m2 = urlStr.match(/\b\d{16}\b/);
-        var nik2 = m2 ? String(m2) : (lastRealNik || "");
-        if (nik2 && nik2.length === 16) {
-          lastRealNik = nik2;
-          var cache2 = customerMemory[nik2] || {
-            "nik": nik2,
-            "nama": "",
-            "familyId": "",
-            "category": "Rumah Tangga",
-            "remainingQuota": 0,
-            "isEnriched": 1
-          };
-
-          var famMatch = urlStr.match(/[?&]familyId=([^&]+)/);
-          if (famMatch) {
-            try { cache2.familyId = decodeURIComponent(famMatch[1]); } catch(e){}
-          }
-
-          var qVal = 0;
-          if (jsonData && jsonData.data && jsonData.data.quotaRemaining) {
-            var qr = jsonData.data.quotaRemaining;
-            qVal = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
-          }
-          cache2.remainingQuota = Number(qVal) || 0;
-          customerMemory[nik2] = cache2;
-
-          console.log("🎯 [EVENT 2: QUOTA] Real NIK:", nik2, "| Quota:", cache2.remainingQuota);
-
-          // Jika Kuota = 0, langsung simpan profil pelanggan kuota 0 ke Flutter
-          if (cache2.remainingQuota === 0) {
-            console.log("⚠️ [SKENARIO B: KUOTA 0] Dispatching customer to Flutter...");
-            dispatchToFlutter('onMyPertaminaCustomerCaptured', cache2);
-          }
-        }
-      }
-
-      // 3. SADAP STRUK TRANSAKSI SUKSES & GANTIKAN NIK SENSOR DENGAN NIK ASLI
-      if (
-        (urlStr.indexOf('/general/v3/transactions') !== -1 || 
-         urlStr.indexOf('/general/v1/transactions/') !== -1 ||
-         urlStr.indexOf('/sale/struk') !== -1) &&
-        jsonData && jsonData.success === true && jsonData.data
-      ) {
-        var payloadData = JSON.parse(JSON.stringify(jsonData.data)); // Clone object
-
-        // Jika NIK di subsidi/customer tersensor (mengandung 'x'), gantikan dengan lastRealNik!
-        if (payloadData.subsidi) {
-          if (!payloadData.subsidi.nik || payloadData.subsidi.nik.indexOf('x') !== -1) {
-            payloadData.subsidi.nik = lastRealNik;
-          }
-        } else {
-          payloadData.subsidi = {
-            "nik": lastRealNik,
-            "nama": (customerMemory[lastRealNik] ? customerMemory[lastRealNik].nama : ""),
-            "familyIdEncrypted": (customerMemory[lastRealNik] ? customerMemory[lastRealNik].familyId : "")
-          };
-        }
-
-        if (payloadData.customer) {
-          if (!payloadData.customer.nik || payloadData.customer.nik.indexOf('x') !== -1) {
-            payloadData.customer.nik = lastRealNik;
-          }
-        }
-
-        // Unmask root level nationalityId and nik
-        if (!payloadData.nationalityId || String(payloadData.nationalityId).indexOf('x') !== -1) {
-          payloadData.nationalityId = lastRealNik;
-        }
-        if (!payloadData.nik || String(payloadData.nik).indexOf('x') !== -1) {
-          payloadData.nik = lastRealNik;
-        }
-        payloadData.realNik = lastRealNik;
-
-        // Lengkapi profil dari memori jika ada
-        if (lastRealNik && customerMemory[lastRealNik]) {
-          var mem = customerMemory[lastRealNik];
-          if (mem.nama && payloadData.subsidi) payloadData.subsidi.nama = mem.nama;
-          if (mem.familyId && payloadData.subsidi) payloadData.subsidi.familyIdEncrypted = mem.familyId;
-          if (mem.nama && !payloadData.name) payloadData.name = mem.nama;
-        }
-
-        console.log("🎯 [EVENT 3: STRUK SUKSES UNMASKED] Fixed Payload with Real NIK:", lastRealNik);
-        dispatchToFlutter('onMyPertaminaTransactionCompleted', payloadData);
-      }
-    } catch(err) {
-      console.log("❌ [INTERCEPT ERROR]:", String(err));
-    }
-  }
-
-  // Dual Interceptor 1: Fetch API
+  // 1. FAST FILTER & UNMASKING DI FETCH API
   var origJson = Response.prototype.json;
   Response.prototype.json = function() {
     var self = this;
     var urlStr = self.url || "";
     return origJson.apply(this, arguments).then(function(jsonData) {
-      handleInterceptedJson(urlStr, jsonData);
-      return jsonData;
-    });
-  };
-
-  // Dual Interceptor 2: XMLHttpRequest
-  var origXhrOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method, url) {
-    this._pcUrl = url;
-    return origXhrOpen.apply(this, arguments);
-  };
-
-  var origXhrSend = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function() {
-    var xhr = this;
-    xhr.addEventListener('load', function() {
       try {
-        var urlStr = xhr._pcUrl || "";
-        if (
-          urlStr.indexOf('/verify-nik') !== -1 ||
-          urlStr.indexOf('/quota') !== -1 ||
-          urlStr.indexOf('/general/v3/transactions') !== -1 ||
-          urlStr.indexOf('/general/v1/transactions/') !== -1 ||
-          urlStr.indexOf('/sale/struk') !== -1
-        ) {
-          var text = xhr.responseText;
-          if (text && text.charCodeAt(0) === 123) {
-            var parsed = JSON.parse(text);
-            handleInterceptedJson(urlStr, parsed);
+        if (!urlStr || typeof urlStr !== 'string') return jsonData;
+
+        // FAST EXIT: Abaikan berkas statis (css, js, png, recaptcha, firebase) agar loading portal KENCANG
+        if (urlStr.indexOf('api-map.my-pertamina.id') === -1 && urlStr.indexOf('/sale/struk') === -1) {
+          return jsonData;
+        }
+
+        // A. EVENT 1: VERIFY-NIK (Tangkap NIK Asli 16 digit & Nama)
+        if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
+          var m1 = urlStr.match(/\b\d{16}\b/);
+          if (m1) {
+            activeCustomer.nik = String(m1);
+            if (jsonData && jsonData.data) {
+              if (jsonData.data.name) activeCustomer.nama = String(jsonData.data.name).trim();
+              if (jsonData.data.familyIdEncrypted) activeCustomer.familyId = String(jsonData.data.familyIdEncrypted).trim();
+            }
+            console.log("🎯 [VERIFY-NIK CAPTURED] NIK:", activeCustomer.nik, "| Nama:", activeCustomer.nama);
           }
         }
-      } catch(e) {}
+
+        // B. EVENT 2: QUOTA (Tangkap Sisa Kuota)
+        if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
+          var m2 = urlStr.match(/\b\d{16}\b/);
+          if (m2) activeCustomer.nik = String(m2);
+
+          var famMatch = urlStr.match(/[?&]familyId=([^&]+)/);
+          if (famMatch) {
+            try { activeCustomer.familyId = decodeURIComponent(famMatch[1]); } catch(e){}
+          }
+
+          if (jsonData && jsonData.data && jsonData.data.quotaRemaining) {
+            var qr = jsonData.data.quotaRemaining;
+            activeCustomer.remainingQuota = Number((typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0)) || 0;
+          }
+
+          console.log("🎯 [QUOTA CAPTURED] NIK:", activeCustomer.nik, "| Quota:", activeCustomer.remainingQuota);
+
+          // Jika Kuota = 0 (Skenario B), langsung simpan profil pelanggan ke Flutter
+          if (activeCustomer.remainingQuota === 0 && activeCustomer.nik.length === 16) {
+            console.log("⚠️ [SKENARIO B: KUOTA 0] Dispatching customer to Flutter...");
+            dispatchToFlutter('onMyPertaminaCustomerCaptured', activeCustomer);
+          }
+        }
+
+        // C. EVENT 3: STRUK / TRANSAKSI SUKSES (Skenario A)
+        if (
+          (urlStr.indexOf('/general/v3/transactions') !== -1 || 
+           urlStr.indexOf('/general/v1/transactions/') !== -1 ||
+           urlStr.indexOf('/sale/struk') !== -1) &&
+          jsonData && jsonData.success === true && jsonData.data
+        ) {
+          var payload = JSON.parse(JSON.stringify(jsonData.data));
+
+          // BUKA SENSOR NIK DENGAN NIK ASLI DARI MEMORI
+          if (!payload.subsidi) payload.subsidi = {};
+          payload.subsidi.nik = activeCustomer.nik;
+          payload.subsidi.nama = activeCustomer.nama || payload.subsidi.nama || "";
+          payload.subsidi.familyIdEncrypted = activeCustomer.familyId || payload.subsidi.familyIdEncrypted || "";
+
+          if (payload.customer) {
+            payload.customer.nik = activeCustomer.nik;
+          }
+
+          console.log("🎯 [STRUK SUCCESS UNMASKED] NIK Asli:", activeCustomer.nik, "| Nama:", payload.subsidi.nama);
+          dispatchToFlutter('onMyPertaminaTransactionCompleted', payload);
+        }
+
+      } catch(eErr) {
+        console.log("❌ [INTERCEPT ERROR]:", String(eErr));
+      }
+      return jsonData;
     });
-    return origXhrSend.apply(this, arguments);
   };
 })();
 ''';
