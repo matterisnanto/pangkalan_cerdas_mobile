@@ -170,12 +170,19 @@ class CustomerProvider extends ChangeNotifier {
         currentCategory = old['category']?.toString() ?? 'Rumah Tangga';
       }
 
-      // Jika incomingNama membawa Nama Asli resmi, WAJIB menimpa 'Pelanggan {NIK}'
-      final incomingNama = data['nama']?.toString() ?? data['name']?.toString() ?? '';
+      // Aturan Smart Upsert untuk Nama:
+      // 1. Jika incomingNama membawa Nama Asli resmi, simpan nama tersebut.
+      // 2. Jika incomingNama kosong/placeholder dan di SQLite sudah ada nama asli, PERTAHANKAN nama asli tersebut.
+      // 3. Hanya gunakan placeholder 'Pelanggan $nik' jika di SQLite memang masih kosong dan payload tidak membawa nama.
+      final incomingNama = (data['nama'] ?? data['name'])?.toString().trim() ?? '';
       if (incomingNama.isNotEmpty && !incomingNama.startsWith('Pelanggan ')) {
-        currentNama = incomingNama.trim();
-      } else if (currentNama.isEmpty) {
-        currentNama = incomingNama.isNotEmpty ? incomingNama.trim() : 'Pelanggan $nik';
+        currentNama = incomingNama;
+      } else if (currentNama.isEmpty || currentNama.startsWith('Pelanggan ')) {
+        if (incomingNama.isNotEmpty) {
+          currentNama = incomingNama;
+        } else if (currentNama.isEmpty) {
+          currentNama = 'Pelanggan $nik';
+        }
       }
 
       final incomingFamId = data['familyId']?.toString() ?? '';

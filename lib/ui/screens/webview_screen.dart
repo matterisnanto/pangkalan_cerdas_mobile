@@ -487,36 +487,8 @@ class _WebViewScreenState extends State<WebViewScreen>
                   _extractToken(request.headers);
                   return null;
                 },
-                onLoadResource: (controller, resource) async {
-                  final urlStr = resource.url?.toString() ?? '';
-
-                  // Tangkap NIK & Family ID secara pasif dari URL /quota tanpa melakukan HTTP GET ulang ke /verify-nik
-                  if (urlStr.contains('/customers/') &&
-                      urlStr.contains('/quota')) {
-                    final match = RegExp(r'\b\d{16}\b').firstMatch(urlStr);
-                    if (match != null) {
-                      final nik = match.group(0)!;
-                      String familyId = '';
-                      try {
-                        final uri = Uri.parse(urlStr);
-                        familyId = uri.queryParameters['familyId'] ?? '';
-                      } catch (_) {}
-
-                      debugPrint(
-                        '📡 [PASSIVE CAPTURE SAFE] NIK $nik | FamID: $familyId (Bebas Re-request Error)',
-                      );
-
-                      // Simpan data pasif ke SQLite tanpa memicu http.get('/verify-nik')
-                      await context
-                          .read<CustomerProvider>()
-                          .autoSaveCustomerFromPortalQuota({
-                            'nik': nik,
-                            'familyId': familyId,
-                            'category': 'Rumah Tangga',
-                            'isEnriched': 1,
-                          });
-                    }
-                  }
+                onLoadResource: (controller, resource) {
+                  // onLoadResource HANYA digunakan untuk monitoring/debug pasif, TIDAK BOLEH menulis ke SQLite secara prematur
                 },
                 onReceivedServerTrustAuthRequest:
                     (controller, challenge) async {
@@ -650,7 +622,9 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   static const String _passiveEventInterceptorScript = r'''
 (function() {
-  console.log("🔔 [PASSIVE EVENT INTERCEPTOR v11.0] Active!");
+  if (window.__pcPassiveDualInterceptorInstalled) return;
+  window.__pcPassiveDualInterceptorInstalled = true;
+  console.log("🔔 [PASSIVE DUAL INTERCEPTOR v12.0] Active (Fetch + XHR)!");
   var customerMemory = {};
 
   function dispatchToFlutter(handlerName, payload) {
@@ -667,94 +641,126 @@ class _WebViewScreenState extends State<WebViewScreen>
     }
   }
 
+  function handleInterceptedJson(urlStr, jsonData) {
+    try {
+      if (!urlStr || typeof urlStr !== 'string' || !jsonData) return;
+
+      // 1. SADAP /VERIFY-NIK (TANGKAP NAMA ASLI & FAMILY ID)
+      if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
+        var m1 = urlStr.match(/\b\d{16}\b/);
+        var nik1 = m1 ? String(m1) : "";
+        if (!nik1 && jsonData.data && (jsonData.data.nik || jsonData.data.nationalityId)) {
+          nik1 = String(jsonData.data.nik || jsonData.data.nationalityId).trim();
+        }
+        if (nik1 && jsonData.data) {
+          var cache1 = customerMemory[nik1] || {
+            "nik": nik1,
+            "nama": "",
+            "familyId": "",
+            "category": "Rumah Tangga",
+            "remainingQuota": 0,
+            "isEnriched": 1
+          };
+          if (jsonData.data.name) cache1.nama = String(jsonData.data.name).trim();
+          if (jsonData.data.familyIdEncrypted) cache1.familyId = String(jsonData.data.familyIdEncrypted).trim();
+          customerMemory[nik1] = cache1;
+          console.log("🎯 [EVENT 1: VERIFY-NIK] Captured Name:", cache1.nama, "| FamID:", cache1.familyId);
+        }
+      }
+
+      // 2. SADAP /QUOTA (CEK SISA KUOTA)
+      if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
+        var m2 = urlStr.match(/\b\d{16}\b/);
+        var nik2 = m2 ? String(m2) : "";
+        if (nik2) {
+          var cache2 = customerMemory[nik2] || {
+            "nik": nik2,
+            "nama": "",
+            "familyId": "",
+            "category": "Rumah Tangga",
+            "remainingQuota": 0,
+            "isEnriched": 1
+          };
+
+          var famMatch = urlStr.match(/[?&]familyId=([^&]+)/);
+          if (famMatch) {
+            try { cache2.familyId = decodeURIComponent(famMatch[1]); } catch(e){}
+          }
+
+          var qVal = 0;
+          if (jsonData.data && jsonData.data.quotaRemaining) {
+            var qr = jsonData.data.quotaRemaining;
+            qVal = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
+          }
+          cache2.remainingQuota = Number(qVal) || 0;
+          customerMemory[nik2] = cache2;
+
+          console.log("🎯 [EVENT 2: QUOTA] Captured Quota:", cache2.remainingQuota);
+
+          // SKENARIO B: Jika Kuota = 0 atau kuota tidak valid (Tidak Bisa Lanjut)
+          if (cache2.remainingQuota === 0 || (jsonData.data && jsonData.data.isQuotaValid === false)) {
+            cache2.remainingQuota = 0;
+            console.log("⚠️ [SKENARIO B: KUOTA 0] Mengirim profil pelanggan kuota 0 ke SQLite:", JSON.stringify(cache2));
+            dispatchToFlutter('onMyPertaminaCustomerCaptured', cache2);
+          }
+        }
+      }
+
+      // 3. SADAP STRUK / TRANSAKSI SUKSES (SKENARIO A)
+      if (
+        (urlStr.indexOf('/general/v3/transactions') !== -1 || 
+         urlStr.indexOf('/general/v1/transactions/') !== -1 ||
+         urlStr.indexOf('/sale/struk') !== -1) &&
+        jsonData.success === true && jsonData.data
+      ) {
+        console.log("🎯 [EVENT 3: STRUK SUKSES] Transaksi Selesai! Mengirim payload ke Flutter...");
+        dispatchToFlutter('onMyPertaminaTransactionCompleted', jsonData.data);
+      }
+    } catch(err) {
+      console.log("❌ [INTERCEPT ERROR]:", String(err));
+    }
+  }
+
+  // Dual Interceptor 1: Fetch API
   var origJson = Response.prototype.json;
   Response.prototype.json = function() {
     var self = this;
     var urlStr = self.url || "";
     return origJson.apply(this, arguments).then(function(jsonData) {
-      try {
-        if (!urlStr || typeof urlStr !== 'string') return jsonData;
-
-        // 1. SADAP /VERIFY-NIK (TANGKAP NAMA ASLI & FAMILY ID)
-        if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
-          var m1 = urlStr.match(/\b\d{16}\b/);
-          var nik1 = m1 ? String(m1) : "";
-          if (!nik1 && jsonData && jsonData.data && (jsonData.data.nik || jsonData.data.nationalityId)) {
-            nik1 = String(jsonData.data.nik || jsonData.data.nationalityId).trim();
-          }
-          if (nik1 && jsonData && jsonData.data) {
-            var cache1 = customerMemory[nik1] || {
-              "nik": nik1,
-              "nama": "",
-              "familyId": "",
-              "category": "Rumah Tangga",
-              "remainingQuota": 0,
-              "isEnriched": 1
-            };
-            if (jsonData.data.name) cache1.nama = String(jsonData.data.name).trim();
-            if (jsonData.data.familyIdEncrypted) cache1.familyId = String(jsonData.data.familyIdEncrypted).trim();
-            customerMemory[nik1] = cache1;
-            console.log("🎯 [EVENT 1: VERIFY-NIK] Captured Name:", cache1.nama);
-          }
-        }
-
-        // 2. SADAP /QUOTA (CEK SISA KUOTA)
-        if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
-          var m2 = urlStr.match(/\b\d{16}\b/);
-          var nik2 = m2 ? String(m2) : "";
-          if (nik2) {
-            var cache2 = customerMemory[nik2] || {
-              "nik": nik2,
-              "nama": "",
-              "familyId": "",
-              "category": "Rumah Tangga",
-              "remainingQuota": 0,
-              "isEnriched": 1
-            };
-
-            var famMatch = urlStr.match(/[?&]familyId=([^&]+)/);
-            if (famMatch) {
-              try { cache2.familyId = decodeURIComponent(famMatch[1]); } catch(e){}
-            }
-
-            var qVal = 0;
-            if (jsonData && jsonData.data && jsonData.data.quotaRemaining) {
-              var qr = jsonData.data.quotaRemaining;
-              qVal = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
-            }
-            cache2.remainingQuota = Number(qVal) || 0;
-            customerMemory[nik2] = cache2;
-
-            console.log("🎯 [EVENT 2: QUOTA] Captured Quota:", cache2.remainingQuota);
-
-            // SKENARIO B: Jika Kuota = 0, LANGSUNG kirim simpan profil pelanggan ke Flutter!
-            if (cache2.remainingQuota === 0 || (jsonData && jsonData.data && jsonData.data.isQuotaValid === false)) {
-              cache2.remainingQuota = 0;
-              console.log("⚠️ [SKENARIO B: KUOTA 0] Mengirim profil pelanggan kuota 0 ke SQLite...");
-              dispatchToFlutter('onMyPertaminaCustomerCaptured', cache2);
-            } else {
-              console.log("🎯 [SKENARIO A: KUOTA AKTIF] Mengirim profil pelanggan ke SQLite...");
-              dispatchToFlutter('onMyPertaminaCustomerCaptured', cache2);
-            }
-          }
-        }
-
-        // 3. SADAP STRUK / TRANSAKSI SUKSES (SKENARIO A)
-        if (
-          (urlStr.indexOf('/general/v3/transactions') !== -1 || 
-           urlStr.indexOf('/general/v1/transactions/') !== -1 ||
-           urlStr.indexOf('/sale/struk') !== -1) &&
-          jsonData && jsonData.success === true && jsonData.data
-        ) {
-          console.log("🎯 [EVENT 3: STRUK SUKSES] Transaksi Selesai!");
-          dispatchToFlutter('onMyPertaminaTransactionCompleted', jsonData.data);
-        }
-
-      } catch(eErr) {
-        console.log("❌ [INTERCEPT EXCEPTION]:", String(eErr));
-      }
+      handleInterceptedJson(urlStr, jsonData);
       return jsonData;
     });
+  };
+
+  // Dual Interceptor 2: XMLHttpRequest
+  var origXhrOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    this._pcUrl = url;
+    return origXhrOpen.apply(this, arguments);
+  };
+
+  var origXhrSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function() {
+    var xhr = this;
+    xhr.addEventListener('load', function() {
+      try {
+        var urlStr = xhr._pcUrl || "";
+        if (
+          urlStr.indexOf('/verify-nik') !== -1 ||
+          urlStr.indexOf('/quota') !== -1 ||
+          urlStr.indexOf('/general/v3/transactions') !== -1 ||
+          urlStr.indexOf('/general/v1/transactions/') !== -1 ||
+          urlStr.indexOf('/sale/struk') !== -1
+        ) {
+          var text = xhr.responseText;
+          if (text && text.charCodeAt(0) === 123) {
+            var parsed = JSON.parse(text);
+            handleInterceptedJson(urlStr, parsed);
+          }
+        }
+      } catch(e) {}
+    });
+    return origXhrSend.apply(this, arguments);
   };
 })();
 ''';
