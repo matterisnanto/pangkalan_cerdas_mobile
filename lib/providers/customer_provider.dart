@@ -235,8 +235,11 @@ class CustomerProvider extends ChangeNotifier {
           ? Map<String, dynamic>.from(data['customer'] as Map)
           : null;
 
-      // 1. Ekstrak NIK
-      String nik = (subsidi?['nik'] ??
+      // 1. Ekstrak NIK (Prioritaskan realNik dari JS Unmasking)
+      String nik = (data['realNik'] ??
+              subsidi?['realNik'] ??
+              customer?['realNik'] ??
+              subsidi?['nik'] ??
               customer?['nik'] ??
               customer?['nationalityId'] ??
               data['nationalityId'] ??
@@ -244,11 +247,6 @@ class CustomerProvider extends ChangeNotifier {
               '')
           .toString()
           .trim();
-
-      if (!RegExp(r'^\d{16}$').hasMatch(nik)) {
-        debugPrint('⚠️ [POST-TRX CUSTOMER] NIK tidak valid: $nik');
-        return;
-      }
 
       // 2. Ekstrak Nama Asli Resmi
       String nama = (subsidi?['nama'] ??
@@ -260,6 +258,29 @@ class CustomerProvider extends ChangeNotifier {
               '')
           .toString()
           .trim();
+
+      if (!RegExp(r'^\d{16}$').hasMatch(nik)) {
+        // Cek fallback jika tersensor (ada 'x' atau '*')
+        if (nik.contains('x') || nik.contains('X') || nik.contains('*')) {
+          final db = await database;
+          final matchedRows = await db.query('customers');
+          for (final row in matchedRows) {
+            final candidateNik = row['nik']?.toString() ?? '';
+            final candidateNama = row['nama']?.toString().trim().toUpperCase() ?? '';
+            if (_nikMatches(candidateNik, nik) &&
+                (nama.isEmpty || candidateNama == nama.toUpperCase())) {
+              nik = candidateNik;
+              debugPrint('🔍 [POST-TRX CUSTOMER] NIK tersensor berhasil dicocokkan: $nik');
+              break;
+            }
+          }
+        }
+      }
+
+      if (!RegExp(r'^\d{16}$').hasMatch(nik)) {
+        debugPrint('⚠️ [POST-TRX CUSTOMER] NIK tidak valid: $nik');
+        return;
+      }
 
       // 3. Ekstrak Family ID Encrypted
       String familyId = (subsidi?['familyIdEncrypted'] ??
@@ -520,5 +541,14 @@ class CustomerProvider extends ChangeNotifier {
       syncTotalCount = 0;
       safeNotifyListeners();
     }
+  }
+
+  static bool _nikMatches(String nik, String masked) {
+    if (nik.length != 16 || masked.length != 16) return false;
+    for (var i = 0; i < 16; i++) {
+      final m = masked[i];
+      if (m != 'x' && m != 'X' && m != '*' && m != nik[i]) return false;
+    }
+    return true;
   }
 }

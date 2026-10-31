@@ -645,14 +645,14 @@ class _WebViewScreenState extends State<WebViewScreen>
     try {
       if (!urlStr || typeof urlStr !== 'string' || !jsonData) return;
 
+      var lastRealNik = "";
+
       // 1. SADAP /VERIFY-NIK (TANGKAP NAMA ASLI & FAMILY ID)
       if (urlStr.indexOf('/verify-nik') !== -1 || urlStr.indexOf('nationalityId=') !== -1) {
         var m1 = urlStr.match(/\b\d{16}\b/);
         var nik1 = m1 ? String(m1) : "";
-        if (!nik1 && jsonData.data && (jsonData.data.nik || jsonData.data.nationalityId)) {
-          nik1 = String(jsonData.data.nik || jsonData.data.nationalityId).trim();
-        }
-        if (nik1 && jsonData.data) {
+        if (nik1 && nik1.length === 16) {
+          lastRealNik = nik1;
           var cache1 = customerMemory[nik1] || {
             "nik": nik1,
             "nama": "",
@@ -661,18 +661,21 @@ class _WebViewScreenState extends State<WebViewScreen>
             "remainingQuota": 0,
             "isEnriched": 1
           };
-          if (jsonData.data.name) cache1.nama = String(jsonData.data.name).trim();
-          if (jsonData.data.familyIdEncrypted) cache1.familyId = String(jsonData.data.familyIdEncrypted).trim();
+          if (jsonData && jsonData.data) {
+            if (jsonData.data.name) cache1.nama = String(jsonData.data.name).trim();
+            if (jsonData.data.familyIdEncrypted) cache1.familyId = String(jsonData.data.familyIdEncrypted).trim();
+          }
           customerMemory[nik1] = cache1;
-          console.log("🎯 [EVENT 1: VERIFY-NIK] Captured Name:", cache1.nama, "| FamID:", cache1.familyId);
+          console.log("🎯 [EVENT 1: VERIFY-NIK] Captured Real NIK:", lastRealNik, "| Name:", cache1.nama);
         }
       }
 
       // 2. SADAP /QUOTA (CEK SISA KUOTA)
       if (urlStr.indexOf('/customers/') !== -1 && urlStr.indexOf('/quota') !== -1) {
         var m2 = urlStr.match(/\b\d{16}\b/);
-        var nik2 = m2 ? String(m2) : "";
-        if (nik2) {
+        var nik2 = m2 ? String(m2) : (lastRealNik || "");
+        if (nik2 && nik2.length === 16) {
+          lastRealNik = nik2;
           var cache2 = customerMemory[nik2] || {
             "nik": nik2,
             "nama": "",
@@ -688,33 +691,70 @@ class _WebViewScreenState extends State<WebViewScreen>
           }
 
           var qVal = 0;
-          if (jsonData.data && jsonData.data.quotaRemaining) {
+          if (jsonData && jsonData.data && jsonData.data.quotaRemaining) {
             var qr = jsonData.data.quotaRemaining;
             qVal = (typeof qr.monthly !== 'undefined') ? qr.monthly : (qr.family || 0);
           }
           cache2.remainingQuota = Number(qVal) || 0;
           customerMemory[nik2] = cache2;
 
-          console.log("🎯 [EVENT 2: QUOTA] Captured Quota:", cache2.remainingQuota);
+          console.log("🎯 [EVENT 2: QUOTA] Real NIK:", nik2, "| Quota:", cache2.remainingQuota);
 
-          // SKENARIO B: Jika Kuota = 0 atau kuota tidak valid (Tidak Bisa Lanjut)
-          if (cache2.remainingQuota === 0 || (jsonData.data && jsonData.data.isQuotaValid === false)) {
-            cache2.remainingQuota = 0;
-            console.log("⚠️ [SKENARIO B: KUOTA 0] Mengirim profil pelanggan kuota 0 ke SQLite:", JSON.stringify(cache2));
+          // Jika Kuota = 0, langsung simpan profil pelanggan kuota 0 ke Flutter
+          if (cache2.remainingQuota === 0) {
+            console.log("⚠️ [SKENARIO B: KUOTA 0] Dispatching customer to Flutter...");
             dispatchToFlutter('onMyPertaminaCustomerCaptured', cache2);
           }
         }
       }
 
-      // 3. SADAP STRUK / TRANSAKSI SUKSES (SKENARIO A)
+      // 3. SADAP STRUK TRANSAKSI SUKSES & GANTIKAN NIK SENSOR DENGAN NIK ASLI
       if (
         (urlStr.indexOf('/general/v3/transactions') !== -1 || 
          urlStr.indexOf('/general/v1/transactions/') !== -1 ||
          urlStr.indexOf('/sale/struk') !== -1) &&
-        jsonData.success === true && jsonData.data
+        jsonData && jsonData.success === true && jsonData.data
       ) {
-        console.log("🎯 [EVENT 3: STRUK SUKSES] Transaksi Selesai! Mengirim payload ke Flutter...");
-        dispatchToFlutter('onMyPertaminaTransactionCompleted', jsonData.data);
+        var payloadData = JSON.parse(JSON.stringify(jsonData.data)); // Clone object
+
+        // Jika NIK di subsidi/customer tersensor (mengandung 'x'), gantikan dengan lastRealNik!
+        if (payloadData.subsidi) {
+          if (!payloadData.subsidi.nik || payloadData.subsidi.nik.indexOf('x') !== -1) {
+            payloadData.subsidi.nik = lastRealNik;
+          }
+        } else {
+          payloadData.subsidi = {
+            "nik": lastRealNik,
+            "nama": (customerMemory[lastRealNik] ? customerMemory[lastRealNik].nama : ""),
+            "familyIdEncrypted": (customerMemory[lastRealNik] ? customerMemory[lastRealNik].familyId : "")
+          };
+        }
+
+        if (payloadData.customer) {
+          if (!payloadData.customer.nik || payloadData.customer.nik.indexOf('x') !== -1) {
+            payloadData.customer.nik = lastRealNik;
+          }
+        }
+
+        // Unmask root level nationalityId and nik
+        if (!payloadData.nationalityId || String(payloadData.nationalityId).indexOf('x') !== -1) {
+          payloadData.nationalityId = lastRealNik;
+        }
+        if (!payloadData.nik || String(payloadData.nik).indexOf('x') !== -1) {
+          payloadData.nik = lastRealNik;
+        }
+        payloadData.realNik = lastRealNik;
+
+        // Lengkapi profil dari memori jika ada
+        if (lastRealNik && customerMemory[lastRealNik]) {
+          var mem = customerMemory[lastRealNik];
+          if (mem.nama && payloadData.subsidi) payloadData.subsidi.nama = mem.nama;
+          if (mem.familyId && payloadData.subsidi) payloadData.subsidi.familyIdEncrypted = mem.familyId;
+          if (mem.nama && !payloadData.name) payloadData.name = mem.nama;
+        }
+
+        console.log("🎯 [EVENT 3: STRUK SUKSES UNMASKED] Fixed Payload with Real NIK:", lastRealNik);
+        dispatchToFlutter('onMyPertaminaTransactionCompleted', payloadData);
       }
     } catch(err) {
       console.log("❌ [INTERCEPT ERROR]:", String(err));

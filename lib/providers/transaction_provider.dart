@@ -317,7 +317,10 @@ class TransactionProvider extends ChangeNotifier {
           .trim();
       final uniqueKey =
           (subHeader?['transactionUniqueKey'] ?? '').toString().trim();
-      final nik = (subsidi?['nik'] ??
+      var nik = (data['realNik'] ??
+              subsidi?['realNik'] ??
+              customer?['realNik'] ??
+              subsidi?['nik'] ??
               customer?['nik'] ??
               data['nationalityId'] ??
               data['nik'] ??
@@ -344,6 +347,23 @@ class TransactionProvider extends ChangeNotifier {
               DateTime.now().toIso8601String())
           .toString()
           .trim();
+
+      // Fallback: NIK tersensor -> cocokkan dengan SQLite
+      if (!RegExp(r'^\d{16}$').hasMatch(nik) &&
+          (nik.contains('x') || nik.contains('X') || nik.contains('*'))) {
+        final db = await _database.database;
+        final rows = await db.query('customers');
+        for (final row in rows) {
+          final candidateNik = row['nik']?.toString() ?? '';
+          final candidateNama = row['nama']?.toString().trim().toUpperCase() ?? '';
+          if (_nikMatches(candidateNik, nik) &&
+              (name.isEmpty || candidateNama == name.toUpperCase())) {
+            nik = candidateNik;
+            debugPrint('🔍 [POST-TRX HISTORY] NIK tersensor dicocokkan: $nik');
+            break;
+          }
+        }
+      }
 
       int totalQty = 0;
       if (data['products'] is List) {
